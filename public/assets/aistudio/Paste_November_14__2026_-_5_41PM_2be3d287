@@ -1,0 +1,328 @@
+```python
+import os
+import pandas as pd
+
+print("Files in current dir:", os.listdir('.'))
+
+filepath = 'Book1.xlsx'
+if os.path.exists(filepath):
+    xls = pd.ExcelFile(filepath)
+    print("Sheet names:", xls.sheet_names)
+    for sheet in xls.sheet_names:
+        print(f"\n--- Sheet: {sheet} ---")
+        df = pd.read_excel(filepath, sheet_name=sheet)
+        print(df.to_string())
+else:
+    print("Book1.xlsx not found directly, checking other paths...")
+
+
+```
+
+```text
+Files in current dir: ['Book1.xlsx']
+Sheet names: ['BA. REGULER 1', 'Reguler 2']
+
+--- Sheet: BA. REGULER 1 ---
+    NOMOR INDUK                                    NAMA SISWA JENIS KELAMIN_x000D_\n(L/P)  NIK SISWA  NISN         TEMPAT LAHIR TANGGAL LAHIR_x000D_\n(dd-mm-yyyy)                                                                                                                                       ALAMAT  NAMA AYAH  NOMOR HP AYAH  NOMOR WA AYAH  NAMA IBU  NOMOR HP IBU  NOMOR WA IBU                     CATATAN
+0     120252672                         ADHITYA SAYYID FUQAHA                           L        NaN   NaN                BOGOR                         2005-04-08                                                                                                                                          NaN        NaN            NaN   6.282111e+12       NaN           NaN           NaN                         NaN
+1     202101004                              ANDRY DESMAWANTO                           L        NaN   NaN              Jakarta                         1981-12-15                                                                                                                           Bojong sari, Depok        NaN   6.281317e+12   6.281317e+12       NaN           NaN           NaN                 Cuti Jan'24
+2     120252604  AZZAHRA KATYENKA AQILAH MAYLIA DIFYA MAGENDA                           P        NaN   NaN               Bekasi                         2006-12-29                                                                 Kavling Primkop Au, Jalan Letda Nasir, RT.1/RW.2, Bojong Kulur, Gunung Putri        NaN   6.289570e+13   6.289570e+13       NaN           NaN           NaN  Al-barkah Tajwid Al-Qur'an
+3       2012026                         Abdul Karim Al Jabbar                           L        NaN   NaN            Pekanbaru                         1988-01-01            PERUMAHAN PERMATA PURI 1 - RADAR AURI\nJl. Phirus Blok C7 No. 3, RT.2/RW.9, Cisalak Pasar, Cimanggis, Depok City, West Java 16452        NaN   6.208129e+12            NaN       NaN           NaN           NaN                         NaN
+4       2712026                                   Abdur Rahim                           L        NaN   NaN         Bangun Harja                         1996-03-28                                                                                                                                    Cileungsi        NaN   6.282425e+12            NaN       NaN           NaN           NaN                         NaN
+5       2022026                                   Abdurrahman                           L        NaN   NaN     Kabupaten Bekasi                         2009-01-23                                                                                            Kavling kelapa 2, padurenan, mustika jaya, Bekasi        NaN   6.208810e+14            NaN       NaN           NaN           NaN                         NaN
+6       3012026                          Abyaz Fazli Shahzada                           L        NaN   NaN              Jakarta                         2006-09-23                                                              Cendana Residence Cibubur blok E no 6. Jl. Dewa, Ciangsana Gunung Putri. Bogor.        NaN   6.208578e+13            NaN       NaN           NaN           NaN                         NaN
+7       2052026                                      Afriyani                           P        NaN   NaN        Serang Banten                         1993-04-04                                                                                                      Perumahan Sakinah Kelorina blok D no.6A        NaN   6.281292e+12            NaN       NaN           NaN           NaN                         NaN
+8       2802026                                   Aisyah Hawa                           P        NaN   NaN              Jakarta                         2010-12-18                                                                                                                           Griya Alam Sentosa        NaN   6.285174e+12            NaN       NaN           NaN           NaN                         NaN
+9       2072026                         Anggi Renaldy Pratama                           L        NaN   NaN              Rembang                         1998-08-09                                     KOMP TWP TNI AL BLOK CC 10/18 RT/RW 008/021 KELURAHAN CIANGSANA,KECAMATAN GUNUNG PUTRI, KAB. BOGOR 16968        NaN   6.208123e+13            NaN       NaN           NaN           NaN                         NaN
+10      2082026                                    Ari Risman                           L        NaN   NaN              Jakarta                         1988-10-28                                                     Jalan Kebantenan III, RT 07 RW 05, No. 15, Semper Timur, Cilincing, Jakarta Utara, 14130        NaN   6.208120e+11            NaN       NaN           NaN           NaN                         NaN
+11    120252635                              BALQIS ALHUMAIRA                           P        NaN   NaN                BOGOR                         2013-01-27                                                                                                                              CIBUBUR MANSION        NaN            NaN            NaN       NaN           NaN           NaN  Al-barkah Tajwid Al-Qur'an
+12      2092026                                 Bayu Priyanto                           L        NaN   NaN               Klaten                         1966-02-12                                                            Jl. Rawamangun Muka Timur no 29, Kel. Rawamangun, Kec. Pulogadung, Jakarta Timur.        NaN   6.208121e+12            NaN       NaN           NaN           NaN                         NaN
+13      2102026                         Bilqis Feiha Banafsaj                           P        NaN   NaN             Kuningan                         2009-12-03                                                                                                                             Cilimus Kuningan        NaN   6.281225e+12            NaN       NaN           NaN           NaN                         NaN
+14      2112026                                   Dany Wildan                           L        NaN   NaN                Bogor                         1972-09-13                                              Sinbad Green Residence Blok B3/24 RT 002 RW 010 Kel. Sindang Barang Kec. Bogor Barat Kota Bogor        NaN   6.281895e+10            NaN       NaN           NaN           NaN                         NaN
+15      2122026                                  Dede Maulana                           L        NaN   NaN             Sukabumi                         1981-05-15                                                                                               Perumahan Sakinah kelorina blok D6 \nCileungsi        NaN   6.208121e+13            NaN       NaN           NaN           NaN                         NaN
+16      2522026                                  Dedi Purnomo                           L        NaN   NaN            Oku Timur                         1992-09-13                                                                                                                                    Cileungsi        NaN   6.282297e+12            NaN       NaN           NaN           NaN                         NaN
+17      2132026                                    Desriwarni                           P        NaN   NaN              Jakarta                         1967-12-10                                                               Jalan WW Dalam 1 no.44A RT012 RW09\nSukabumi Utara\nKebon Jeruk\nJakarta Barat        NaN   6.208181e+13            NaN       NaN           NaN           NaN                         NaN
+18      2142026                                  Dian Martini                           P        NaN   NaN              Jakarta                         1977-03-18                                                                  Cibubur Country Cluster Lily Garden LN 5 Cikeas Udik Gunung Putri Kab Bogor        NaN   6.208212e+13            NaN       NaN           NaN           NaN                         NaN
+19      2162026                           FERA AFRIANTY FARID                           P        NaN   NaN               Padang                         1982-06-17                                                                           Samasta Ciseeng Blok C no 10\nKel Kuripan\nKec Ciseeng \nKab Bogor        NaN   6.208127e+13            NaN       NaN           NaN           NaN                         NaN
+20      2172026                          Forma Pandu Kharisma                           L        NaN   NaN               Bantul                         1998-08-09                                                         Perum. Metland Transyogi sektor 3 Blok CD3 No 31 RT/RW 01/08 Cipenjo Cileungsi Bogor        NaN   6.208381e+13            NaN       NaN           NaN           NaN                         NaN
+21    120252616                             GIGIH ANDI WIGUNA                           L        NaN   NaN              Magetan                         1994-06-12                                 Grand Nusa Indah, Cluster Brunflesia, Blok B 12 No. 8 RT 004 RW 016, Desa Mampir, Kecamatan Cileungsi, 16820        NaN   6.289793e+11   6.289793e+11       NaN           NaN           NaN  Al-barkah Tajwid Al-Qur'an
+22      2182026                                Gunawan Suhari                           L        NaN   NaN                Bogor                         1992-11-01                                                                    Kp Limusnunggal Rt 02 Rw 03 Desa Limusnunggal, Kec. Cileungsi, Kab. Bogor        NaN   6.208967e+13            NaN       NaN           NaN           NaN                         NaN
+23      2192026                                      Gusmalik                           L        NaN   NaN              jakarta                         1989-01-15                                                                           jl. Lapangan 1 rt 03 rw 07, rawa domba, duren sawit, jakarta timur        NaN   6.208129e+13            NaN       NaN           NaN           NaN                         NaN
+24    120252603                         HARY KAPOTA NOVRIYADI                           L        NaN   NaN               Cimahi                         1974-11-23                                                                 Greenpark Residence, Pinewood V No.7, Jatimelati, Pondok Melati, Kota Bekasi        NaN   6.281932e+12   6.281932e+12       NaN           NaN           NaN  Al-barkah Tajwid Al-Qur'an
+25      2212026                                 Haura Adhwiya                           P        NaN   NaN                Bogor                         2011-02-22                                                                                                 Perum Griya soka blok B no 6, sukaraja bogor        NaN   6.208212e+12            NaN       NaN           NaN           NaN                         NaN
+26      2232026                                Henra Syaputra                           L        NaN   NaN             Pariaman                         1992-04-11                                                                 Gang Nangka rt rw 05/03 Kel. Cimahpar kec. Bogor Utara Kota Bogor Jawa Barat        NaN   6.208527e+13            NaN       NaN           NaN           NaN                         NaN
+27      2272026                                     ISLAMIYAH                           P        NaN   NaN               Kendal                         1981-05-20                                                  Perum Metland Cileungsi Blok DC 3 No. 7 RT.04 RW.014 Kel. Cipenjo Kec. Cileungsi Kab. Bogor        NaN   6.287888e+12            NaN       NaN           NaN           NaN                         NaN
+28      2262026                         Inayah Lathifa Fitrah                           P        NaN   NaN                Medan                         2013-01-01                                                                                             Cluster Gandaria Blok 7 No.32 Metland Cileungsih        NaN   6.208136e+13            NaN       NaN           NaN           NaN                         NaN
+29      2282026                          Jihad Jamlatul Akbar                           L        NaN   NaN             Sumedang                         2008-12-07                                                                                 Perumahan Cileungsi hijau blok 03 no 21 kab Bogor Jawa barat        NaN   6.208569e+13            NaN       NaN           NaN           NaN                         NaN
+30    320252612                                     KASMAWATI                           P        NaN   NaN              JAKARTA                         1970-10-28                                                                                                                   KAVLING ASSUNNAH 1 NO 135B        NaN   6.281316e+12   6.281316e+12       NaN           NaN           NaN           Al-barkah Takmili
+31      2292026                                    Kamalludin                           L        NaN   NaN  DKI - jakarta timur                         1976-09-16                                                                   Jln rawa kuning Rt01/Rw02 kel. Pulogebang kec. Cakung \nDki -jakarta timur        NaN   6.281317e+12            NaN       NaN           NaN           NaN                         NaN
+32      2502026                                       Kasirin                           L        NaN   NaN              Seragen                         1978-10-18                                                                                                                      Kp.Tegal, Klapa nunggal        NaN   6.281399e+12            NaN       NaN           NaN           NaN                         NaN
+33      3072026                            Kayla Amalia putri                           P        NaN   NaN              Bandung                         2007-11-11                                        Perumahan Pesona Vista Mekarsari c1 11 RT 3 RW 12 rawailat desa Dayeuh Kec Cileungsi Bogor Jawa Barat        NaN   6.208569e+13            NaN       NaN           NaN           NaN                         NaN
+34      2702026                                   Khoirunnisa                           P        NaN   NaN               Bekasi                         2002-12-17                                                                                                                                Jati Sampurna        NaN   6.289603e+12            NaN       NaN           NaN           NaN                         NaN
+35    220252646                                       MULYANA                           L        NaN   NaN        LEBAK, BANTEN                         2000-06-07                                                                                                                         KP. TENGAH CILEUNGSI        NaN   6.285719e+12   6.285719e+12       NaN           NaN           NaN           Al-barkah Reguler
+36      2512026                             Mainggi Kasmianto                           L        NaN   NaN              Jakarta                         1986-05-18                                                                                                            Perum. Duta mekar sari, Cileungsi        NaN   6.285947e+12            NaN       NaN           NaN           NaN                         NaN
+37      2312026                         Mohammad Faris Humama                           L        NaN   NaN               Kendal                         1995-10-25                                                                           Jalan Melati 11 No. 28 BS. 45 Kranggan Permai Jatisampurna BEKASI.        NaN   6.208200e+13            NaN       NaN           NaN           NaN                         NaN
+38      2322026                           Muhammad Umar Firas                           L        NaN   NaN              Jakarta                         2007-05-04                            Perumahan, Jl. Bumi Mutiara blok ja 6 No.9, RT.7/RW.32, Bojong Kulur, Kec. Gn. Putri, Kabupaten Bogor, Jawa Barat        NaN   6.208774e+13            NaN       NaN           NaN           NaN                         NaN
+39      2332026                    Nashira Salsabila Pasjchal                           P        NaN   NaN              Jakarta                         2003-11-17                                          Jl. H. Taiman Ujung No. 14 Rt\n06/04 Kelurahan Tengah, Kec. Kramat Jati, Jakarta Timur, DKI JAKARTA        NaN   6.208134e+13            NaN       NaN           NaN           NaN                         NaN
+40      2662026                    Naswaa Dheniar Ghinannafsy                           P        NaN   NaN                Garut                         2002-01-03                                                                                                     Jl. Elang 5 no. 13 Jati Sampurna, Bekasi        NaN   6.287886e+12            NaN       NaN           NaN           NaN                         NaN
+41      2342026                         Nike Viviet Juandhini                           P        NaN   NaN              Jakarta                         1996-06-01                                                                                         Puri Harmoni 9 Extension Blok A7 No. 4, Klapanunggal        NaN   6.287873e+12            NaN       NaN           NaN           NaN                         NaN
+42      2352026                             Nuhan Yahya Kamil                           L        NaN   NaN               Bekasi                         2011-08-19                                                                 Komplek Wood Hill Residence Blok B 12, Jatiluhur, Jatiasih Bekasi Jawa Barat        NaN   6.208319e+13            NaN       NaN           NaN           NaN                         NaN
+43      2812026                           Octavianti Mayasari                           P        NaN   NaN               Serang                         1988-10-02                                                                                                                              Komplek Assunna        NaN   6.282124e+12            NaN       NaN           NaN           NaN                         NaN
+44    120252621                                  PRIO PRABOWO                           L        NaN   NaN              Jakarta                         1997-04-10                                         Jl. Manunggal XVII, Gg. Al-Burhan RT.003/011 No. 80, Kel. Lubang Buaya, Kec. Cipayung, Jakarta Timur        NaN   6.289796e+11   6.289796e+11       NaN           NaN           NaN  Al-barkah Tajwid Al-Qur'an
+45      2672026                        Pancaningtyas Agustina                           P        NaN   NaN            Surakarta                         1989-08-17                                                                                                           Jl. KSU gang rubin rt 04/01 no. 54        NaN   6.287881e+12            NaN       NaN           NaN           NaN                         NaN
+46      2372026                               Patimah azzahra                           P        NaN   NaN        Lubuk linggau                         2009-01-15                                                                    Jl pesona madrid blok f1 no. 66 gunung putri kota wisata jawa barat 16967        NaN   6.208218e+13            NaN       NaN           NaN           NaN                         NaN
+47      2392026                               RATIH ESSA DEWI                           P        NaN   NaN          DKI JAKARTA                         1980-01-19                                                                 Jl kecapi V Cluster kecapi Indah no 158C , RT 06 RW 05 , jagakarsa , jak sel        NaN   6.208113e+13            NaN       NaN           NaN           NaN                         NaN
+48    120252612                             RIZKI KURNIA ALAM                           L        NaN   NaN              Jakarta                         1987-09-15                             Grand Nusa Indah\nJl. Raya Cileungsi Jonggol, Cileungsi, Setu sari, Bogor 16820\n(Cluster iresine Blok i9 No.25)        NaN   6.281310e+12   6.281310e+12       NaN           NaN           NaN  Al-barkah Tajwid Al-Qur'an
+49    220252667                                      ROSLINDA                           P        NaN   NaN               PADANG                         1972-06-29                                                                                                                          PERUM. BUMI MUTIARA        NaN            NaN   6.282124e+12       NaN           NaN           NaN                         NaN
+50      2412026                                 SITI KHODIJAH                           P        NaN   NaN              Jakarta                         1972-06-04                                                                                     KP. CIRUMPUT RT001/RW002 DESA LIMUSNUNGGAL KEC.CILEUNGSI        NaN   6.208577e+13            NaN       NaN           NaN           NaN                         NaN
+51    120252617                                  SYAUQI YUSRA                           L        NaN   NaN              Cibubur                         1976-10-04                                                                                                      Jl. Pine Forest 6 No. 2 Cibubur Country        NaN   6.281170e+11   6.281170e+11       NaN           NaN           NaN  Al-barkah Tajwid Al-Qur'an
+52      2652026                           Shania Chintya Dewi                           P        NaN   NaN                   30                         1996-01-30                                                                                                                         Citra grand, Cibubur        NaN   6.282387e+12            NaN       NaN           NaN           NaN                         NaN
+53      2402026                           Siti Adira Maharani                           P        NaN   NaN              Bandung                         2003-03-05                                               Limus Pratama Regency Cluster Cendana II Blok F19 No.1, Cileungsi, Kabupaten Bogor, Jawa Barat        NaN   6.208132e+13            NaN       NaN           NaN           NaN                         NaN
+54      2492026                                   Sri Mulyani                           P        NaN   NaN           Purwakarta                         1970-09-28                                                                                             Jl. Anggrk bulan raya no. 3, Taman Yasmin, Bogor        NaN   6.281220e+12            NaN       NaN           NaN           NaN                         NaN
+55      2422026                      Sulthan Muhammad AlFatih                           L        NaN   NaN             Kuningan                         2012-11-15                                                                                                              Cilimus - Kuningan - Jawa Barat        NaN   6.208131e+13            NaN       NaN           NaN           NaN                         NaN
+56      2252026                                       Sutarno                           L        NaN   NaN                  NaN                         1967-01-18                                                                                                                           Sukamaju, Cilodong        NaN   6.281219e+12            NaN       NaN           NaN           NaN                         NaN
+57      2442026                 Syabil Athar Zaidan Irmasnyah                           L        NaN   NaN               Bekasi                         2007-01-05                                                                   Bumi Mutiara Blok JJ 2 No. 50, RT 07 RW 034, Bojongkulur, Gn. Putri, Bogor        NaN   6.208521e+13            NaN       NaN           NaN           NaN                         NaN
+58      2452026                                Teten Haryanto                           L        NaN   NaN               SRAGEN                         1993-11-12                                grand tamansari residence blok G6 no 18 RT 02 RW 07 DESA TAMANSARI KECAMATAN SETU KABUPATEN BEKASI JAWA BARAT        NaN   6.208577e+13            NaN       NaN           NaN           NaN                         NaN
+59      2462026                       Tina Fauzi Putri Tewali                           P        NaN   NaN              Kendari                         1993-05-23  Perumahan Citragran Cibubur blok GG02 Nomor 08 Kawasan Glenview, Kelurahan cikeas udik, Kecamatan gunung putri, Kabupaten bogor, Jawa barat        NaN   6.281284e+12            NaN       NaN           NaN           NaN                         NaN
+60      2642026                                  Tonny Marlin                           L        NaN   NaN                 Duri                         1985-11-30                                                                                                      Komp. Garuda kalibata pancoran, Jakarta        NaN   6.281328e+12            NaN       NaN           NaN           NaN                         NaN
+61  10000152024                                  YENI MURYANI                           P        NaN   NaN              BANDUNG                         1964-07-17                                                      JL. KRAMAT GANCENG NO.46 KELURAHAN PONDOK RANGGON KECAMATAN CIPAYUNG KOTA JAKARTA TIMUR        NaN   6.282111e+12            NaN       NaN           NaN           NaN                CUTI JUNI'26
+62      2732026                                 Yeni Dwi Puji                           P        NaN   NaN              Jakarta                         1978-08-13                                                                                                                             Citra indah city        NaN   6.281212e+12            NaN       NaN           NaN           NaN                         NaN
+63    120252622                           ZUL ARSYAD PASARIBU                           L        NaN   NaN              Sibolga                         1981-07-03                                                                              Puri Nirwana 3, Jl. Boulevard BC 19, Karadenan, Cibinong, Bogor        NaN   6.281285e+11   6.281285e+11       NaN           NaN           NaN  Al-barkah Tajwid Al-Qur'an
+64      2472026                               tomy suprayitno                           L        NaN   NaN              jakarta                         1977-03-11                                                               komplek cibubur country cluster lily garden blok ln5 no.3 kab bogor jawa barat        NaN   6.208128e+12            NaN       NaN           NaN           NaN                         NaN
+
+--- Sheet: Reguler 2 ---
+    NOMOR INDUK                NAMA SISWA JENIS KELAMIN_x000D_\n(L/P)  NIK SISWA  NISN   TEMPAT LAHIR TANGGAL LAHIR_x000D_\n(dd-mm-yyyy)                                                                                                                                        ALAMAT  NAMA AYAH  NOMOR HP AYAH  NOMOR WA AYAH  NAMA IBU  NOMOR HP IBU  NOMOR WA IBU                     CATATAN
+0     220252614       ADI YANUAR FADILLAH                           L        NaN   NaN       Kuningan                         1982-01-26                                            Griya Soka Bogor Raya Blok B No. 6, RT/RW 004/006, Desa Sukaraja, Kec. Sukaraja, Kab. Bogor, 16710        NaN   6.281194e+11   6.281194e+11       NaN           NaN           NaN           Al-barkah Reguler
+1     220252631             AIP SARIPUDIN                           L        NaN   NaN       Sukabumi                         1980-03-24                             Perumahan Telaga Harapan Blok I10 No 12, Kelurahan Telaga Murni, Kecamatan Cikarang Barat, Kabupaten Bekasi 17530        NaN   6.285814e+12   6.285814e+12       NaN           NaN           NaN           Al-barkah Reguler
+2     220252613         ALI AHMAD HERYANA                           L        NaN   NaN         Subang                         1976-08-31                                               Perumahan Puri Gading Alam Raya 2 Blok D4 No.8 RT:05/06 Jati Melati, Pondok Melati, Kota Bekasi        NaN   6.281116e+10   6.281116e+10       NaN           NaN           NaN           Al-barkah Reguler
+3     220252633            ANGGA SETIAWAN                           L        NaN   NaN       Salatiga                         1990-01-25                                       Perumahan Telaga Pesona, Blok L12 No.20, Cikarang Barat, Kabupaten Bekasi, Jawa Barat, Indonesia, 17530        NaN   6.285641e+12   6.285641e+12       NaN           NaN           NaN           Al-barkah Reguler
+4       3102026                     Anisa                           P        NaN   NaN        Jakarta                         1984-02-14                                                                                                             Perum. Duta mekar sari, Cileungsi        NaN   6.289526e+12            NaN       NaN           NaN           NaN                         NaN
+5     220252611       BAGAS YUSUF GUNAWAN                           L        NaN   NaN         Serang                         1997-05-08                                                                                             Limus Pratama Regency Blok C4 No 18 RT 007 RW 006        NaN   6.285891e+12   6.285891e+12       NaN           NaN           NaN           Al-barkah Reguler
+6     220252627            BAGUS PANUNTUN                           L        NaN   NaN        Jakarta                         1991-11-07                                                                   Villa Nusa Indah 3 blok KM.2 No.1, Bojong Kulur, Gunung Putri, Bogor, 16969        NaN   6.281322e+12   6.281322e+12       NaN           NaN           NaN           Al-barkah Reguler
+7     220252609              FARRAS QUTHB                           L        NaN   NaN      pontianak                         2006-06-10                                                                                                jalan karimata no.6 pontianak kalimantan barat        NaN   6.285760e+12   6.285760e+12       NaN           NaN           NaN           Al-barkah Reguler
+8      20001423           FATIMAH AZZAHRA                           P        NaN   NaN      CILEUNGSI                         2010-02-24                                                                                                                               CIBUBUR MANSION        NaN            NaN   6.285215e+12       NaN           NaN           NaN                         NaN
+9     220252602      GUNAWAN ADHI SAPUTRA                           L        NaN   NaN        Jakarta                         1981-05-23                                                                                                    Jl Asarina Blok AC6 no.6 Metland,Cileungsi        NaN   6.285878e+12   6.285878e+12       NaN           NaN           NaN           Al-barkah Reguler
+10    220252615            HENDRA WIRAWAN                           L        NaN   NaN        Bandung                         1981-03-15                                                                               Metalnd Cileungsi Blok CJ 4 No 27, Cipenjo, Cileungsi Kab Bogor        NaN   6.281319e+12   6.281319e+12       NaN           NaN           NaN           Al-barkah Reguler
+11   2000512024                    ISHMAH                           P        NaN   NaN         KLATEN                         1999-08-21                                      PERUM GRIYA LIMUS ASRI BLOK B13 NO.1 RT.04 / RW.12 DESA PASIRANGIN. KECAMATAN CILEUNGSI. KABUPATEN BOGOR        NaN   6.288892e+11            NaN       NaN           NaN           NaN           Al-barkah Reguler
+12    220252607    KHAIRINA JIHAN FIRZANA                           P        NaN   NaN        Cirebon                         2012-09-11                                                              Jl. Pahlawan Kp. Cirumput No.19 RT.01/RW.02, Limusnunggal, Cileungsi, Kab. Bogor        NaN   6.285228e+12   6.285228e+12       NaN           NaN           NaN           Al-barkah Reguler
+13    220252617    NAJWA GADIZA SALSABILA                           P        NaN   NaN        Jakarta                         2007-02-02                                                    Jln asy syafi'iyyah no 68 RT 01 RW 05 kelurahan Cilangkap kecamatan Cipayung Jakarta Timur        NaN   6.282210e+12   6.282210e+12       NaN           NaN           NaN           Al-barkah Reguler
+14    220252632              OKI RAHADINI                           P        NaN   NaN     Yogyakarta                         1983-10-16                                                                              Kp Serab rt 7 rw 3 no 431\nTirtajaya Sukmajaya\nDepok Jawa Barat        NaN   6.287883e+12   6.287883e+12       NaN           NaN           NaN           Al-barkah Reguler
+15    220252651          PUSVITA RAMAWATI                           P        NaN   NaN         BEKASI                         2011-07-30                                                                                                                            GRIYA ALAM SENTOSA        NaN   6.281318e+12   6.281318e+12       NaN           NaN           NaN           Al-barkah Reguler
+16    220252642  SAFEENA NOAH NAISHA VORE                           P        NaN   NaN        JAKARTA                         2010-01-31                                                                                           Jl. ASYAFIIYAH GG. H. MUS RT. 05/03 NO. 18 CIPAYUNG        NaN   6.285124e+12   6.285124e+12       NaN           NaN           NaN           Al-barkah Reguler
+17    220252638     SALWA AUDRIANA DONITA                           P        NaN   NaN        Cianjur                         2001-11-15                                                              Putri Indah Estate, Jl. Krisan, Desa Tlajung udik, Kecamatan Gunung Putri, Bogor        NaN   6.289650e+12   6.289650e+12       NaN           NaN           NaN           Al-barkah Reguler
+18    220252628             SHEILA AMELIA                           P        NaN   NaN         Bekasi                         1992-10-17  Citragran Cibubur Cluster The Meadows, Blok L1 No. 10, Kelurahan Jatikarya, Jati Sampurna, KOTA BEKASI, JATI SAMPURNA, JAWA BARAT, ID, 17435        NaN   6.281387e+12   6.281387e+12       NaN           NaN           NaN           Al-barkah Reguler
+19    220252605          SIGIT IS RAHARJO                           L        NaN   NaN      Indramayu                         1982-10-31                                                              Jl. Pahlawan Kp. Cirumput No.19 RT.01/RW.02, Limusnunggal, Cileungsi, Kab. Bogor        NaN   6.285228e+12   6.285228e+12       NaN           NaN           NaN           Al-barkah Reguler
+20   2202526331           Shahla Khadijah                           L        NaN   NaN        Jakarta                         2005-06-21                                                                                                                                        Bekasi        NaN   6.281319e+12            NaN       NaN           NaN           NaN                         NaN
+21    220252608            YULIANI ZAENAL                           P        NaN   NaN        Cirebon                         1982-06-24                                                              Jl. Pahlawan Kp. Cirumput No.19 RT.01/RW.02, Limusnunggal, Cileungsi, Kab. Bogor        NaN   6.285228e+12   6.285228e+12       NaN           NaN           NaN           Al-barkah Reguler
+22  10000022024            YUSNENI SINAGA                           P        NaN   NaN  MARIHAT BUTAR                         1981-07-22                                                                                                                  DESA MAMPIR TIMUR, CILEUNGSI        NaN   6.281277e+12            NaN       NaN           NaN           NaN  Al-barkah Tajwid Al-Qur'an
+
+
+```
+
+```python
+import pandas as pd
+
+xls = pd.ExcelFile('Book1.xlsx')
+for sheet in xls.sheet_names:
+    df = pd.read_excel('Book1.xlsx', sheet_name=sheet)
+    names = df['NAMA SISWA'].dropna().astype(str).str.strip().tolist()
+    print(f"=== {sheet} (Total: {len(names)}) ===")
+    for i, name in enumerate(names, 1):
+        print(f"{i}. {name}")
+    print()
+
+
+```
+
+```text
+=== BA. REGULER 1 (Total: 65) ===
+1. ADHITYA SAYYID FUQAHA
+2. ANDRY DESMAWANTO
+3. AZZAHRA KATYENKA AQILAH MAYLIA DIFYA MAGENDA
+4. Abdul Karim Al Jabbar
+5. Abdur Rahim
+6. Abdurrahman
+7. Abyaz Fazli Shahzada
+8. Afriyani
+9. Aisyah Hawa
+10. Anggi Renaldy Pratama
+11. Ari Risman
+12. BALQIS ALHUMAIRA
+13. Bayu Priyanto
+14. Bilqis Feiha Banafsaj
+15. Dany Wildan
+16. Dede Maulana
+17. Dedi Purnomo
+18. Desriwarni
+19. Dian Martini
+20. FERA AFRIANTY FARID
+21. Forma Pandu Kharisma
+22. GIGIH ANDI WIGUNA
+23. Gunawan Suhari
+24. Gusmalik
+25. HARY KAPOTA NOVRIYADI
+26. Haura Adhwiya
+27. Henra Syaputra
+28. ISLAMIYAH
+29. Inayah Lathifa Fitrah
+30. Jihad Jamlatul Akbar
+31. KASMAWATI
+32. Kamalludin
+33. Kasirin
+34. Kayla Amalia putri
+35. Khoirunnisa
+36. MULYANA
+37. Mainggi Kasmianto
+38. Mohammad Faris Humama
+39. Muhammad Umar Firas
+40. Nashira Salsabila Pasjchal
+41. Naswaa Dheniar Ghinannafsy
+42. Nike Viviet Juandhini
+43. Nuhan Yahya Kamil
+44. Octavianti Mayasari
+45. PRIO PRABOWO
+46. Pancaningtyas Agustina
+47. Patimah azzahra
+48. RATIH ESSA DEWI
+49. RIZKI KURNIA ALAM
+50. ROSLINDA
+51. SITI KHODIJAH
+52. SYAUQI YUSRA
+53. Shania Chintya Dewi
+54. Siti Adira Maharani
+55. Sri Mulyani
+56. Sulthan Muhammad AlFatih
+57. Sutarno
+58. Syabil Athar Zaidan Irmasnyah
+59. Teten Haryanto
+60. Tina Fauzi Putri Tewali
+61. Tonny Marlin
+62. YENI MURYANI
+63. Yeni Dwi Puji
+64. ZUL ARSYAD PASARIBU
+65. tomy suprayitno
+
+=== Reguler 2 (Total: 23) ===
+1. ADI YANUAR FADILLAH
+2. AIP SARIPUDIN
+3. ALI AHMAD HERYANA
+4. ANGGA SETIAWAN
+5. Anisa
+6. BAGAS YUSUF GUNAWAN
+7. BAGUS PANUNTUN
+8. FARRAS QUTHB
+9. FATIMAH AZZAHRA
+10. GUNAWAN ADHI SAPUTRA
+11. HENDRA WIRAWAN
+12. ISHMAH
+13. KHAIRINA JIHAN FIRZANA
+14. NAJWA GADIZA SALSABILA
+15. OKI RAHADINI
+16. PUSVITA RAMAWATI
+17. SAFEENA NOAH NAISHA VORE
+18. SALWA AUDRIANA DONITA
+19. SHEILA AMELIA
+20. SIGIT IS RAHARJO
+21. Shahla Khadijah
+22. YULIANI ZAENAL
+23. YUSNENI SINAGA
+
+
+
+```
+
+## Reguler 1 (65 Murid)
+
+1. ADHITYA SAYYID FUQAHA
+2. ANDRY DESMAWANTO
+3. AZZAHRA KATYENKA AQILAH MAYLIA DIFYA MAGENDA
+4. Abdul Karim Al Jabbar
+5. Abdur Rahim
+6. Abdurrahman
+7. Abyaz Fazli Shahzada
+8. Afriyani
+9. Aisyah Hawa
+10. Anggi Renaldy Pratama
+11. Ari Risman
+12. BALQIS ALHUMAIRA
+13. Bayu Priyanto
+14. Bilqis Feiha Banafsaj
+15. Dany Wildan
+16. Dede Maulana
+17. Dedi Purnomo
+18. Desriwarni
+19. Dian Martini
+20. FERA AFRIANTY FARID
+21. Forma Pandu Kharisma
+22. GIGIH ANDI WIGUNA
+23. Gunawan Suhari
+24. Gusmalik
+25. HARY KAPOTA NOVRIYADI
+26. Haura Adhwiya
+27. Henra Syaputra
+28. ISLAMIYAH
+29. Inayah Lathifa Fitrah
+30. Jihad Jamlatul Akbar
+31. KASMAWATI
+32. Kamalludin
+33. Kasirin
+34. Kayla Amalia putri
+35. Khoirunnisa
+36. MULYANA
+37. Mainggi Kasmianto
+38. Mohammad Faris Humama
+39. Muhammad Umar Firas
+40. Nashira Salsabila Pasjchal
+41. Naswaa Dheniar Ghinannafsy
+42. Nike Viviet Juandhini
+43. Nuhan Yahya Kamil
+44. Octavianti Mayasari
+45. PRIO PRABOWO
+46. Pancaningtyas Agustina
+47. Patimah azzahra
+48. RATIH ESSA DEWI
+49. RIZKI KURNIA ALAM
+50. ROSLINDA
+51. SITI KHODIJAH
+52. SYAUQI YUSRA
+53. Shania Chintya Dewi
+54. Siti Adira Maharani
+55. Sri Mulyani
+56. Sulthan Muhammad AlFatih
+57. Sutarno
+58. Syabil Athar Zaidan Irmasnyah
+59. Teten Haryanto
+60. Tina Fauzi Putri Tewali
+61. Tonny Marlin
+62. YENI MURYANI
+63. Yeni Dwi Puji
+64. ZUL ARSYAD PASARIBU
+65. tomy suprayitno
+
+---
+
+## Reguler 2 (23 Murid)
+
+1. ADI YANUAR FADILLAH
+2. AIP SARIPUDIN
+3. ALI AHMAD HERYANA
+4. ANGGA SETIAWAN
+5. Anisa
+6. BAGAS YUSUF GUNAWAN
+7. BAGUS PANUNTUN
+8. FARRAS QUTHB
+9. FATIMAH AZZAHRA
+10. GUNAWAN ADHI SAPUTRA
+11. HENDRA WIRAWAN
+12. ISHMAH
+13. KHAIRINA JIHAN FIRZANA
+14. NAJWA GADIZA SALSABILA
+15. OKI RAHADINI
+16. PUSVITA RAMAWATI
+17. SAFEENA NOAH NAISHA VORE
+18. SALWA AUDRIANA DONITA
+19. SHEILA AMELIA
+20. SIGIT IS RAHARJO
+21. Shahla Khadijah
+22. YULIANI ZAENAL
+23. YUSNENI SINAGA

@@ -1,0 +1,6 @@
+{
+  "name": "Madrasah Shorof Al-Barkah",
+  "description": "Platform latihan tashrif istilahi dan lughawi interaktif serta manajemen setoran shorof siswa Reguler 1 dan Reguler 2 (Ikhwan & Akhwat).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
