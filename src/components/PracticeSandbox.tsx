@@ -23,6 +23,7 @@ interface PracticeSandboxProps {
   onChangeGender: (g: StudentGender) => void;
   onSaveAttempt: (attempt: Omit<QuizAttempt, 'id' | 'timestamp'>) => void;
   recentAttempts: QuizAttempt[];
+  lockedStudent?: Student;
 }
 
 const SEQUENCE_KEYS: (keyof MauzunVerb['istilahi'])[] = [
@@ -46,6 +47,7 @@ export const PracticeSandbox: React.FC<PracticeSandboxProps> = ({
   onChangeGender,
   onSaveAttempt,
   recentAttempts,
+  lockedStudent,
 }) => {
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedBabId, setSelectedBabId] = useState<string>('all');
@@ -62,18 +64,23 @@ export const PracticeSandbox: React.FC<PracticeSandboxProps> = ({
       const matchQuery =
         !studentSearch.trim() ||
         s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-        s.nis.includes(studentSearch.trim());
+        s.kota.toLowerCase().includes(studentSearch.toLowerCase());
       return matchClass && matchGender && matchQuery;
     });
   }, [students, filterClass, filterGender, studentSearch]);
 
   const activeStudent = useMemo(
-    () => students.find((s) => s.id === selectedStudentId) || filteredGroupStudents[0] || students[0],
-    [students, selectedStudentId, filteredGroupStudents]
+    () =>
+      lockedStudent ||
+      students.find((s) => s.id === selectedStudentId) ||
+      filteredGroupStudents[0] ||
+      students[0],
+    [lockedStudent, students, selectedStudentId, filteredGroupStudents]
   );
 
-  // Ensure selected student stays synced if class/gender tab changes
+  // Ensure selected student stays synced if class/gender tab changes (Superadmin mode only)
   useEffect(() => {
+    if (lockedStudent) return;
     if (
       activeStudent &&
       (activeStudent.kelas !== filterClass || activeStudent.gender !== filterGender)
@@ -85,7 +92,7 @@ export const PracticeSandbox: React.FC<PracticeSandboxProps> = ({
         onSelectStudent(firstInGroup.id);
       }
     }
-  }, [filterClass, filterGender, activeStudent, students, onSelectStudent]);
+  }, [lockedStudent, filterClass, filterGender, activeStudent, students, onSelectStudent]);
 
   // Quiz state
   const [questions, setQuestions] = useState<QuizQuestion[]>(() =>
@@ -254,8 +261,6 @@ export const PracticeSandbox: React.FC<PracticeSandboxProps> = ({
               <span className="font-semibold text-slate-700">
                 Kelompok {activeStudent?.gender}
               </span>
-              <span aria-hidden="true">·</span>
-              <span className="tabular-nums">NIS {activeStudent?.nis}</span>
               {activeStudent?.kota && (
                 <>
                   <span aria-hidden="true">·</span>
@@ -600,135 +605,164 @@ export const PracticeSandbox: React.FC<PracticeSandboxProps> = ({
 
       {/* RIGHT / CONTROL & STUDENT SELECTOR DECK (4 columns on 12-col grid = 33.3%) */}
       <aside className="lg:col-span-4 space-y-6">
-        {/* Panel 1: Pemilih Kelas, Kelompok (Ikhwan/Akhwat), dan Siswa */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <div className="flex items-center justify-between gap-2 mb-4">
-            <h3 className="text-base font-bold text-slate-900">
-              1. Pilih Kelas &amp; Siswa
-            </h3>
-            <span className="text-xs text-slate-500 tabular-nums">
-              {filteredGroupStudents.length} Siswa
-            </span>
-          </div>
-
-          {/* Class Filter: Reguler 1 vs Reguler 2 */}
-          <div className="mb-3">
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">
-              Kelas Program
-            </label>
-            <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-lg">
-              {(['Reguler 1', 'Reguler 2'] as StudentClass[]).map((cls) => {
-                const count = students.filter((s) => s.kelas === cls).length;
-                return (
-                  <button
-                    key={cls}
-                    type="button"
-                    onClick={() => onChangeClass(cls)}
-                    className={`py-2 px-3 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                      filterClass === cls
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    {cls} ({count})
-                  </button>
-                );
-              })}
+        {/* Panel 1: Pemilih Kelas & Siswa (Superadmin) atau Profil Siswa Login */}
+        {lockedStudent ? (
+          <div className="bg-white border border-slate-200 rounded-xl p-5">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <h3 className="text-base font-bold text-slate-900">
+                1. Profil Siswa Login
+              </h3>
+              <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                Akun Aktif
+              </span>
             </div>
-          </div>
-
-          {/* Gender Filter: Ikhwan vs Akhwat */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">
-              Kelompok Belajar (Terpisah)
-            </label>
-            <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-lg">
-              {(['Ikhwan', 'Akhwat'] as StudentGender[]).map((g) => {
-                const count = students.filter(
-                  (s) => s.kelas === filterClass && s.gender === g
-                ).length;
-                return (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => onChangeGender(g)}
-                    className={`py-2 px-3 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                      filterGender === g
-                        ? 'bg-white text-emerald-800 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    {g} ({count})
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Search & Random Student Picker */}
-          <div className="flex items-center gap-2 mb-3">
-            <div className="relative flex-1">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={studentSearch}
-                onChange={(e) => setStudentSearch(e.target.value)}
-                placeholder={`Cari nama di ${filterClass} (${filterGender})...`}
-                className="w-full pl-8 pr-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-600"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={handlePickRandomStudent}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors whitespace-nowrap shrink-0"
-              title="Pilih siswa acak dari kelompok ini untuk setoran/kuis"
-            >
-              <Shuffle className="w-3.5 h-3.5" />
-              Acak
-            </button>
-          </div>
-
-          {/* Scrollable Student List for the Active Class & Gender */}
-          <div className="max-h-52 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100 bg-[#F8FAFC]">
-            {filteredGroupStudents.length === 0 ? (
-              <div className="p-4 text-center text-xs text-slate-500">
-                Tidak ada nama siswa yang cocok dengan pencarian.
+            <div className="p-3.5 rounded-lg bg-[#F8FAFC] border border-slate-200 space-y-1">
+              <div className="text-sm font-bold text-slate-900">
+                {lockedStudent.name}
               </div>
-            ) : (
-              filteredGroupStudents.map((st, idx) => {
-                const isSelected = st.id === activeStudent?.id;
-                return (
-                  <button
-                    key={st.id}
-                    type="button"
-                    onClick={() => {
-                      onSelectStudent(st.id);
-                    }}
-                    className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-xs transition-colors ${
-                      isSelected
-                        ? 'bg-emerald-700 text-white font-semibold'
-                        : 'hover:bg-slate-100 text-slate-800'
-                    }`}
-                  >
-                    <span className="truncate">
-                      <span className="tabular-nums opacity-75 mr-1.5">
-                        {String(idx + 1).padStart(2, '0')}.
-                      </span>
-                      {st.name}
-                    </span>
-                    <span
-                      className={`tabular-nums text-[11px] shrink-0 ${
-                        isSelected ? 'text-emerald-100' : 'text-slate-400'
+              <div className="text-xs text-slate-600">
+                {lockedStudent.kelas} · Kelompok {lockedStudent.gender}
+              </div>
+              {lockedStudent.kota && (
+                <div className="text-[11px] text-slate-500">
+                  {lockedStudent.kota}
+                </div>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
+              Setiap sesi latihan yang Anda selesaikan akan otomatis tercatat pada riwayat nilai akun Anda.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-white border border-slate-200 rounded-xl p-5">
+            <div className="flex items-center justify-between gap-2 mb-4">
+              <h3 className="text-base font-bold text-slate-900">
+                1. Pilih Kelas &amp; Siswa
+              </h3>
+              <span className="text-xs text-slate-500 tabular-nums">
+                {filteredGroupStudents.length} Siswa
+              </span>
+            </div>
+
+            {/* Class Filter: Reguler 1 vs Reguler 2 */}
+            <div className="mb-3">
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                Kelas Program
+              </label>
+              <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-lg">
+                {(['Reguler 1', 'Reguler 2'] as StudentClass[]).map((cls) => {
+                  const count = students.filter((s) => s.kelas === cls).length;
+                  return (
+                    <button
+                      key={cls}
+                      type="button"
+                      onClick={() => onChangeClass(cls)}
+                      className={`py-2 px-3 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 ${
+                        filterClass === cls
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
-                      {st.nis}
-                    </span>
-                  </button>
-                );
-              })
-            )}
+                      {cls} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Gender Filter: Ikhwan vs Akhwat */}
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                Kelompok Belajar (Terpisah)
+              </label>
+              <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-lg">
+                {(['Ikhwan', 'Akhwat'] as StudentGender[]).map((g) => {
+                  const count = students.filter(
+                    (s) => s.kelas === filterClass && s.gender === g
+                  ).length;
+                  return (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => onChangeGender(g)}
+                      className={`py-2 px-3 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 ${
+                        filterGender === g
+                          ? 'bg-white text-emerald-800 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {g} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Search & Random Student Picker */}
+            <div className="flex items-center gap-2 mb-3">
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={studentSearch}
+                  onChange={(e) => setStudentSearch(e.target.value)}
+                  placeholder={`Cari nama di ${filterClass} (${filterGender})...`}
+                  className="w-full pl-8 pr-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-600"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handlePickRandomStudent}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors whitespace-nowrap shrink-0"
+                title="Pilih siswa acak dari kelompok ini untuk setoran/kuis"
+              >
+                <Shuffle className="w-3.5 h-3.5" />
+                Acak
+              </button>
+            </div>
+
+            {/* Scrollable Student List for the Active Class & Gender */}
+            <div className="max-h-52 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100 bg-[#F8FAFC]">
+              {filteredGroupStudents.length === 0 ? (
+                <div className="p-4 text-center text-xs text-slate-500">
+                  Tidak ada nama siswa yang cocok dengan pencarian.
+                </div>
+              ) : (
+                filteredGroupStudents.map((st, idx) => {
+                  const isSelected = st.id === activeStudent?.id;
+                  return (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={() => {
+                        onSelectStudent(st.id);
+                      }}
+                      className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-xs transition-colors ${
+                        isSelected
+                          ? 'bg-emerald-700 text-white font-semibold'
+                          : 'hover:bg-slate-100 text-slate-800'
+                      }`}
+                    >
+                      <span className="truncate">
+                        <span className="tabular-nums opacity-75 mr-1.5">
+                          {String(idx + 1).padStart(2, '0')}.
+                        </span>
+                        {st.name}
+                      </span>
+                      <span
+                        className={`text-[11px] shrink-0 ${
+                          isSelected ? 'text-emerald-100' : 'text-slate-400'
+                        }`}
+                      >
+                        {st.kota}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Panel 2: Pengaturan Materi & Mode Latihan */}
         <div className="bg-white border border-slate-200 rounded-xl p-5">

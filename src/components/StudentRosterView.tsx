@@ -6,6 +6,7 @@ import {
   Play,
   Check,
   ArrowLeftRight,
+  KeyRound,
 } from 'lucide-react';
 import {
   Student,
@@ -14,6 +15,7 @@ import {
   QuizAttempt,
   SetoranRecord,
 } from '../data/students';
+import { StudentPasswordMap } from '../utils/auth';
 
 interface StudentRosterViewProps {
   students: Student[];
@@ -27,6 +29,8 @@ interface StudentRosterViewProps {
     kelas: StudentClass,
     gender: StudentGender
   ) => void;
+  studentPasswords?: StudentPasswordMap;
+  onResetStudentPassword?: (studentId: string) => void;
 }
 
 const CORE_BABS = ['Bab 1', 'Bab 2', 'Bab 3', 'Bab 4', 'Bab 5', 'Bab 6'];
@@ -39,6 +43,8 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
   onStartPracticeForStudent,
   onAddStudent,
   onUpdateStudentGroup,
+  studentPasswords = {},
+  onResetStudentPassword,
 }) => {
   const [selectedClass, setSelectedClass] = useState<StudentClass>('Reguler 1');
   const [genderFilter, setGenderFilter] = useState<'Split' | StudentGender>('Split');
@@ -47,7 +53,6 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
 
   // New student form state
   const [newName, setNewName] = useState('');
-  const [newNis, setNewNis] = useState('');
   const [newKelas, setNewKelas] = useState<StudentClass>('Reguler 1');
   const [newGender, setNewGender] = useState<StudentGender>('Ikhwan');
   const [newKota, setNewKota] = useState('');
@@ -58,7 +63,6 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
       const matchSearch =
         !searchQuery.trim() ||
         s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.nis.includes(searchQuery.trim()) ||
         s.kota.toLowerCase().includes(searchQuery.toLowerCase());
       return matchClass && matchSearch;
     });
@@ -92,7 +96,6 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
 
   const handleExportCSV = () => {
     const headers = [
-      'Nomor Induk',
       'Nama Siswa',
       'Kelas',
       'Kelompok (Ikhwan/Akhwat)',
@@ -104,7 +107,6 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
     const rows = students.map((s) => {
       const stats = getStudentStats(s.id);
       return [
-        `"${s.nis}"`,
         `"${s.name}"`,
         `"${s.kelas}"`,
         `"${s.gender}"`,
@@ -128,14 +130,12 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
     e.preventDefault();
     if (!newName.trim()) return;
     onAddStudent({
-      nis: newNis.trim() || `${Date.now().toString().slice(-7)}`,
       name: newName.trim(),
       kelas: newKelas,
       gender: newGender,
       kota: newKota.trim() || 'Indonesia',
     });
     setNewName('');
-    setNewNis('');
     setNewKota('');
     setShowAddForm(false);
   };
@@ -164,7 +164,7 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
             <thead>
               <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500">
                 <th className="py-3 px-4 w-10 tabular-nums">No</th>
-                <th className="py-3 px-4">Nama Siswa &amp; NIS</th>
+                <th className="py-3 px-4">Nama Siswa</th>
                 <th className="py-3 px-4">Setoran Hafalan (Bab 1–6)</th>
                 <th className="py-3 px-4 text-right">Nilai Kuis</th>
                 <th className="py-3 px-4 text-right">Aksi</th>
@@ -173,6 +173,7 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
             <tbody className="divide-y divide-slate-200 text-xs">
               {list.map((st, idx) => {
                 const stats = getStudentStats(st.id);
+                const hasPassword = Boolean(studentPasswords[st.id]);
                 return (
                   <tr
                     key={st.id}
@@ -182,24 +183,29 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
                       {String(idx + 1).padStart(2, '0')}
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-semibold text-slate-900 text-sm">
-                        {st.name}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-semibold text-slate-900 text-sm">
+                          {st.name}
+                        </span>
+                        <span
+                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+                            hasPassword
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              : 'bg-slate-100 text-slate-500 border-slate-200'
+                          }`}
+                        >
+                          {hasPassword ? 'Akun Aktif' : 'Belum Password'}
+                        </span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
-                        <span className="tabular-nums">NIS {st.nis}</span>
-                        {st.kota && (
-                          <>
-                            <span aria-hidden="true">·</span>
-                            <span>{st.kota}</span>
-                          </>
-                        )}
-                        {st.catatan && (
-                          <>
-                            <span aria-hidden="true">·</span>
+                      {(st.kota || st.catatan) && (
+                        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
+                          {st.kota && <span>{st.kota}</span>}
+                          {st.kota && st.catatan && <span aria-hidden="true">·</span>}
+                          {st.catatan && (
                             <span className="text-slate-600">{st.catatan}</span>
-                          </>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex flex-wrap items-center gap-1">
@@ -239,6 +245,24 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="inline-flex items-center justify-end gap-1.5">
+                        {hasPassword && onResetStudentPassword && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `Reset password untuk ${st.name}? Siswa perlu membuat password baru saat login berikutnya.`
+                                )
+                              ) {
+                                onResetStudentPassword(st.id);
+                              }
+                            }}
+                            title="Reset password siswa"
+                            className="p-2 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition-colors"
+                          >
+                            <KeyRound className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() =>
@@ -261,7 +285,7 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors whitespace-nowrap shrink-0"
                         >
                           <Play className="w-3 h-3" />
-                          Latihan
+                          Ujian
                         </button>
                       </div>
                     </td>
@@ -357,7 +381,7 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari nama atau nomor induk..."
+                placeholder="Cari nama atau asal kota..."
                 className="w-full pl-8 pr-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-600"
               />
             </div>
@@ -403,13 +427,13 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">
-                Nomor Induk (NIS)
+                Asal Kota
               </label>
               <input
                 type="text"
-                value={newNis}
-                onChange={(e) => setNewNis(e.target.value)}
-                placeholder="Contoh: 220252699"
+                value={newKota}
+                onChange={(e) => setNewKota(e.target.value)}
+                placeholder="Contoh: Jakarta"
                 className="w-full px-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-lg"
               />
             </div>

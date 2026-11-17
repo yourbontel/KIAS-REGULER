@@ -1,12 +1,14 @@
-import React from 'react';
-import { Trash2, Play } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Download, Play, Search, Trash2 } from 'lucide-react';
 import {
+  PASSING_SCORE,
+  QuizAttempt,
+  SetoranRecord,
   Student,
   StudentClass,
   StudentGender,
-  QuizAttempt,
-  SetoranRecord,
 } from '../data/students';
+import { getBabsForClass } from '../data/shorofData';
 
 interface ClassRecapViewProps {
   students: Student[];
@@ -39,6 +41,14 @@ const COHORTS: { kelas: StudentClass; gender: StudentGender; desc: string }[] = 
   },
 ];
 
+const MODE_LABELS: Record<QuizAttempt['mode'], string> = {
+  ujian_bab: 'Ujian Per Bab',
+  istilahi: 'Tashrif Istilahi',
+  lughawi: 'Tashrif Lughawi',
+  tebak_shighat: 'Tebak Shighat',
+  susun_tashrif: 'Susun Tabel',
+};
+
 export const ClassRecapView: React.FC<ClassRecapViewProps> = ({
   students,
   attempts,
@@ -46,16 +56,79 @@ export const ClassRecapView: React.FC<ClassRecapViewProps> = ({
   onJumpToCohortPractice,
   onClearHistory,
 }) => {
+  const [matrixClass, setMatrixClass] = useState<StudentClass>('Reguler 1');
+  const [matrixGender, setMatrixGender] = useState<'Semua' | StudentGender>('Semua');
+  const [matrixSearch, setMatrixSearch] = useState('');
+
+  const activeBabs = useMemo(() => getBabsForClass(matrixClass), [matrixClass]);
+
+  // Precompute best score per student per bab
+  const bestScoreMap = useMemo(() => {
+    const map: Record<string, Record<string, number>> = {};
+    attempts.forEach((att) => {
+      if (!map[att.studentId]) map[att.studentId] = {};
+      const prev = map[att.studentId][att.babId];
+      if (prev === undefined || att.score > prev) {
+        map[att.studentId][att.babId] = att.score;
+      }
+    });
+    return map;
+  }, [attempts]);
+
+  const filteredMatrixStudents = useMemo(() => {
+    const q = matrixSearch.trim().toLowerCase();
+    return students.filter((s) => {
+      if (s.kelas !== matrixClass) return false;
+      if (matrixGender !== 'Semua' && s.gender !== matrixGender) return false;
+      if (!q) return true;
+      return s.name.toLowerCase().includes(q) || s.kota.toLowerCase().includes(q);
+    });
+  }, [students, matrixClass, matrixGender, matrixSearch]);
+
+  const handleExportMatrixCSV = () => {
+    const headers = [
+      'Nama Siswa',
+      'Kelas',
+      'Kelompok',
+      ...activeBabs.map((b) => b.kode),
+      'Rata-rata',
+    ];
+    const rows = filteredMatrixStudents.map((st) => {
+      const scoresMap = bestScoreMap[st.id] || {};
+      const babScores = activeBabs.map((b) => scoresMap[b.id]);
+      const validScores = babScores.filter((v): v is number => v !== undefined);
+      const avg =
+        validScores.length > 0
+          ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length)
+          : '';
+      return [
+        `"${st.name}"`,
+        `"${st.kelas}"`,
+        `"${st.gender}"`,
+        ...babScores.map((v) => (v !== undefined ? v : '-')),
+        avg,
+      ].join(',');
+    });
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Rekap_Nilai_Per_Bab_${matrixClass.replace(/\s+/g, '_')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-8">
-      {/* 4 Separated Cohort Cards: Reguler 1 (Ikhwan / Akhwat) & Reguler 2 (Ikhwan / Akhwat) */}
+      {/* 4 Separated Cohort Cards */}
       <div>
         <div className="mb-4">
           <h2 className="text-lg font-bold text-slate-900">
-            Ringkasan 4 Kelompok Belajar (Terpisah Kelas &amp; Ikhwan/Akhwat)
+            Ringkasan 4 Kelompok Belajar (Reguler 1 &amp; 2 · Ikhwan / Akhwat)
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Klik tombol mulai latihan pada salah satu kelompok untuk langsung menguji siswa di kelompok tersebut.
+            Klik tombol pada salah satu kelompok untuk membuka simulasi ujian per bab bagi kelompok tersebut.
           </p>
         </div>
 
@@ -104,21 +177,21 @@ export const ClassRecapView: React.FC<ClassRecapViewProps> = ({
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Sesi Latihan Kuis:</span>
+                      <span className="text-slate-500">Ujian Diselesaikan:</span>
                       <span className="font-semibold text-slate-900 tabular-nums">
-                        {cohortAttempts.length} Sesi
+                        {cohortAttempts.length} Kali
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Rata-rata Skor:</span>
+                      <span className="text-slate-500">Rata-rata Nilai:</span>
                       <span className="font-semibold text-emerald-800 tabular-nums">
-                        {cohortAttempts.length > 0 ? `${avgScore}%` : '—'}
+                        {cohortAttempts.length > 0 ? avgScore : '—'}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Total Bab Setoran:</span>
+                      <span className="text-slate-500">Setoran Lisan Lulus:</span>
                       <span className="font-semibold text-slate-900 tabular-nums">
-                        {totalSetoranBabs} Bab Lulus
+                        {totalSetoranBabs} Bab
                       </span>
                     </div>
                   </div>
@@ -130,7 +203,7 @@ export const ClassRecapView: React.FC<ClassRecapViewProps> = ({
                   className="mt-5 w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-semibold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors whitespace-nowrap shrink-0"
                 >
                   <Play className="w-3.5 h-3.5" />
-                  Latihan Kelompok Ini
+                  Ujian Kelompok Ini
                 </button>
               </div>
             );
@@ -138,21 +211,169 @@ export const ClassRecapView: React.FC<ClassRecapViewProps> = ({
         </div>
       </div>
 
-      {/* Recent Quiz Attempts Log */}
+      {/* Per-Bab Score Matrix Table */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h3 className="text-base font-bold text-slate-900">
-              Riwayat Aktivitas Latihan &amp; Setoran Terbaru
+              Matriks Nilai Ujian Siswa Per Bab (Nilai Terbaik)
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Catatan otomatis hasil latihan kuis Tashrif Istilahi, Lughawi, dan Susun Tabel oleh siswa.
+              Hijau menandakan lulus KKM ({PASSING_SCORE}+), oranye menandakan perlu mengulang.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              aria-label="Filter Kelas Matriks"
+              value={matrixClass}
+              onChange={(e) =>
+                setMatrixClass(e.target.value as StudentClass)
+              }
+              className="px-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-lg"
+            >
+              <option value="Reguler 1">Reguler 1 (14 Bab)</option>
+              <option value="Reguler 2">Reguler 2 (9 Bab)</option>
+            </select>
+
+            <select
+              aria-label="Filter Kelompok Matriks"
+              value={matrixGender}
+              onChange={(e) =>
+                setMatrixGender(e.target.value as 'Semua' | StudentGender)
+              }
+              className="px-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-lg"
+            >
+              <option value="Semua">Ikhwan &amp; Akhwat</option>
+              <option value="Ikhwan">Ikhwan</option>
+              <option value="Akhwat">Akhwat</option>
+            </select>
+
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={matrixSearch}
+                onChange={(e) => setMatrixSearch(e.target.value)}
+                placeholder="Cari siswa..."
+                className="pl-8 pr-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-lg w-40 sm:w-48"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleExportMatrixCSV}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Unduh CSV
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 bg-[#F8FAFC] text-[11px] font-semibold text-slate-600">
+                <th className="py-3 px-4 w-10 tabular-nums">No</th>
+                <th className="py-3 px-4 min-w-[200px]">Nama Siswa</th>
+                {activeBabs.map((bab) => (
+                  <th
+                    key={bab.id}
+                    className="py-3 px-2.5 text-center whitespace-nowrap"
+                  >
+                    {bab.kode}
+                  </th>
+                ))}
+                <th className="py-3 px-4 text-right whitespace-nowrap">
+                  Rata-rata
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 text-xs">
+              {filteredMatrixStudents.map((st, idx) => {
+                const stScores = bestScoreMap[st.id] || {};
+                const validScores = activeBabs.map((b) => stScores[b.id]).filter(
+                  (v): v is number => v !== undefined
+                );
+                const avg =
+                  validScores.length > 0
+                    ? Math.round(
+                        validScores.reduce((a, b) => a + b, 0) /
+                          validScores.length
+                      )
+                    : null;
+
+                return (
+                  <tr key={st.id} className="hover:bg-slate-50/80">
+                    <td className="py-2.5 px-4 text-slate-400 tabular-nums">
+                      {String(idx + 1).padStart(2, '0')}
+                    </td>
+                    <td className="py-2.5 px-4">
+                      <div className="font-semibold text-slate-900">
+                        {st.name}
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        {st.kelas} · {st.gender}
+                      </div>
+                    </td>
+                    {activeBabs.map((bab) => {
+                      const val = stScores[bab.id];
+                      return (
+                        <td
+                          key={bab.id}
+                          className="py-2.5 px-2.5 text-center tabular-nums"
+                        >
+                          {val !== undefined ? (
+                            <span
+                              className={`inline-block min-w-[2.2rem] px-1.5 py-0.5 rounded font-bold text-[11px] ${
+                                val >= PASSING_SCORE
+                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                  : 'bg-amber-50 text-amber-800 border border-amber-200'
+                              }`}
+                            >
+                              {val}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300">—</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                    <td className="py-2.5 px-4 text-right tabular-nums font-bold text-slate-900">
+                      {avg !== null ? avg : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Recent Exam Attempts Log */}
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900">
+              Riwayat Pengerjaan Ujian Terbaru
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Catatan otomatis hasil ujian per bab yang dikerjakan oleh siswa.
             </p>
           </div>
           {attempts.length > 0 && (
             <button
               type="button"
-              onClick={onClearHistory}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    'Hapus seluruh riwayat nilai ujian siswa? Tindakan ini tidak dapat dibatalkan.'
+                  )
+                ) {
+                  onClearHistory();
+                }
+              }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 rounded-lg transition-colors whitespace-nowrap shrink-0"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -163,7 +384,7 @@ export const ClassRecapView: React.FC<ClassRecapViewProps> = ({
 
         {attempts.length === 0 ? (
           <div className="p-10 text-center text-xs text-slate-500">
-            Belum ada riwayat sesi kuis yang diselesaikan. Silakan pilih siswa di menu Latihan Shorof untuk memulai evaluasi.
+            Belum ada ujian yang diselesaikan. Siswa atau Superadmin dapat memulai ujian di tab Ujian Per Bab.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -173,9 +394,9 @@ export const ClassRecapView: React.FC<ClassRecapViewProps> = ({
                   <th className="py-3 px-5">Waktu</th>
                   <th className="py-3 px-5">Nama Siswa</th>
                   <th className="py-3 px-5">Kelas &amp; Kelompok</th>
-                  <th className="py-3 px-5">Materi &amp; Metode</th>
+                  <th className="py-3 px-5">Bab &amp; Jenis</th>
                   <th className="py-3 px-5 text-right">Benar / Soal</th>
-                  <th className="py-3 px-5 text-right">Nilai Akhir</th>
+                  <th className="py-3 px-5 text-right">Nilai</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 text-xs">
@@ -193,20 +414,21 @@ export const ClassRecapView: React.FC<ClassRecapViewProps> = ({
                         {st?.kelas} · {st?.gender}
                       </td>
                       <td className="py-3.5 px-5 text-slate-700">
-                        {att.babLabel} ·{' '}
-                        {att.mode === 'istilahi'
-                          ? 'Tashrif Istilahi'
-                          : att.mode === 'lughawi'
-                          ? 'Tashrif Lughawi'
-                          : att.mode === 'tebak_shighat'
-                          ? 'Tebak Shighat'
-                          : 'Susun Tabel'}
+                        {att.babLabel} · {MODE_LABELS[att.mode]}
                       </td>
                       <td className="py-3.5 px-5 text-right tabular-nums text-slate-700">
                         {att.correctCount} / {att.totalQuestions}
                       </td>
-                      <td className="py-3.5 px-5 text-right tabular-nums font-bold text-emerald-800">
-                        {att.score}%
+                      <td className="py-3.5 px-5 text-right tabular-nums font-bold">
+                        <span
+                          className={
+                            att.score >= PASSING_SCORE
+                              ? 'text-emerald-700'
+                              : 'text-amber-700'
+                          }
+                        >
+                          {att.score}
+                        </span>
                       </td>
                     </tr>
                   );

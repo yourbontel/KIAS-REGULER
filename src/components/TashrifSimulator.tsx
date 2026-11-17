@@ -1,25 +1,41 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Volume2 } from 'lucide-react';
-import { SHOROF_BABS, SHIGHAT_LIST, DHAMIR_14 } from '../data/shorofData';
+import { getBabsForClass, SHIGHAT_LIST, DHAMIR_14 } from '../data/shorofData';
+import type { StudentClass } from '../data/students';
 import { speakArabic } from '../utils/quizGenerator';
 
 export const TashrifSimulator: React.FC = () => {
-  const [selectedBabId, setSelectedBabId] = useState<string>(SHOROF_BABS[0].id);
+  const [curriculumClass, setCurriculumClass] = useState<StudentClass>('Reguler 1');
+  const activeBabs = useMemo(
+    () => getBabsForClass(curriculumClass),
+    [curriculumClass]
+  );
+
+  const [selectedBabId, setSelectedBabId] = useState<string>(activeBabs[0].id);
   const [selectedVerbId, setSelectedVerbId] = useState<string>(
-    SHOROF_BABS[0].mauzunList[0].id
+    activeBabs[0].mauzunList[0].id
   );
   const [activeTab, setActiveTab] = useState<'istilahi' | 'lughawi'>('istilahi');
   const [highlightedDhamirIdx, setHighlightedDhamirIdx] = useState<number>(0);
 
   const activeBab =
-    SHOROF_BABS.find((b) => b.id === selectedBabId) || SHOROF_BABS[0];
+    activeBabs.find((b) => b.id === selectedBabId) || activeBabs[0];
   const activeVerb =
     activeBab.mauzunList.find((v) => v.id === selectedVerbId) ||
     activeBab.mauzunList[0];
 
+  const handleSelectCurriculum = (kelas: StudentClass) => {
+    setCurriculumClass(kelas);
+    const nextBabs = getBabsForClass(kelas);
+    if (nextBabs.length > 0) {
+      setSelectedBabId(nextBabs[0].id);
+      setSelectedVerbId(nextBabs[0].mauzunList[0].id);
+    }
+  };
+
   const handleSelectBab = (babId: string) => {
     setSelectedBabId(babId);
-    const bab = SHOROF_BABS.find((b) => b.id === babId);
+    const bab = activeBabs.find((b) => b.id === babId);
     if (bab && bab.mauzunList.length > 0) {
       setSelectedVerbId(bab.mauzunList[0].id);
     }
@@ -29,13 +45,38 @@ export const TashrifSimulator: React.FC = () => {
     <div className="space-y-8">
       {/* Top Selector Bar: Bab Wazan & Kata Kerja (Mauzun) */}
       <div className="bg-white border border-slate-200 rounded-xl p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-5 border-b border-slate-100">
+          <div className="text-xs font-semibold text-slate-700">
+            Kurikulum Tashrif: <span className="text-emerald-700">{curriculumClass}</span> ({activeBabs.length} Bab)
+          </div>
+          <div className="inline-flex rounded-lg border border-slate-200 bg-[#F8FAFC] p-0.5">
+            {(['Reguler 1', 'Reguler 2'] as StudentClass[]).map((kelas) => {
+              const active = curriculumClass === kelas;
+              return (
+                <button
+                  key={kelas}
+                  type="button"
+                  onClick={() => handleSelectCurriculum(kelas)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                    active
+                      ? 'bg-emerald-700 text-white'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {kelas} ({kelas === 'Reguler 1' ? '14 Bab' : '9 Bab'})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
           <div className="lg:col-span-7">
             <div className="text-xs text-slate-500 mb-2">
               Pilih Bab Tashrif (Tsulatsi Mujarrod &amp; Tsulatsi Mazid)
             </div>
             <div className="flex flex-wrap gap-2">
-              {SHOROF_BABS.map((bab) => {
+              {activeBabs.map((bab) => {
                 const isSelected = bab.id === activeBab.id;
                 return (
                   <button
