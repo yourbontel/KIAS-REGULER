@@ -36,6 +36,7 @@ interface StudentPickerListProps {
   searchQuery: string;
   onChangeSearch: (val: string) => void;
   onSelectStudent: (studentId: string) => void;
+  emptyTitle?: string;
   emptySubtitle: string;
   maxHeightClass?: string;
 }
@@ -51,6 +52,7 @@ const StudentPickerList: React.FC<StudentPickerListProps> = ({
   searchQuery,
   onChangeSearch,
   onSelectStudent,
+  emptyTitle = 'Nama siswa tidak ditemukan',
   emptySubtitle,
   maxHeightClass = 'max-h-72',
 }) => (
@@ -157,7 +159,7 @@ const StudentPickerList: React.FC<StudentPickerListProps> = ({
             <Search className="w-4 h-4" />
           </div>
           <div className="text-xs font-medium text-slate-600">
-            Nama siswa tidak ditemukan
+            {emptyTitle}
           </div>
           <div className="text-[11px] text-slate-400">{emptySubtitle}</div>
         </div>
@@ -288,6 +290,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const filteredStudents = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return students.filter((s) => {
+      if (!studentPasswords[s.id]) return false;
       if (filterClass !== 'Semua' && s.kelas !== filterClass) return false;
       if (filterGender !== 'Semua' && s.gender !== filterGender) return false;
       if (!q) return true;
@@ -296,7 +299,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
         s.kota.toLowerCase().includes(q)
       );
     });
-  }, [students, filterClass, filterGender, searchQuery]);
+  }, [students, studentPasswords, filterClass, filterGender, searchQuery]);
+
+  const activatedTotalCount = useMemo(
+    () => students.filter((s) => Boolean(studentPasswords[s.id])).length,
+    [students, studentPasswords]
+  );
 
   const unactivatedStudents = useMemo(() => {
     const q = createSearch.trim().toLowerCase();
@@ -530,7 +538,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     )}
 
                     <StudentPickerList
-                      title="1. Cari & Pilih Nama Anda"
+                      title="1. Pilih Akun untuk Login"
                       students={filteredStudents}
                       studentPasswords={studentPasswords}
                       filterClass={filterClass}
@@ -540,7 +548,16 @@ export const LoginView: React.FC<LoginViewProps> = ({
                       searchQuery={searchQuery}
                       onChangeSearch={setSearchQuery}
                       onSelectStudent={handleSelectStudent}
-                      emptySubtitle="Coba ubah filter kelas, kelompok, atau kata kunci pencarian."
+                      emptyTitle={
+                        activatedTotalCount === 0
+                          ? 'Belum ada akun siswa yang aktif untuk login'
+                          : 'Nama siswa tidak ditemukan'
+                      }
+                      emptySubtitle={
+                        activatedTotalCount === 0
+                          ? 'Klik tombol "Buat Password" di bawah untuk membuat password terlebih dahulu.'
+                          : 'Coba ubah filter kelas, kelompok, atau kata kunci pencarian.'
+                      }
                     />
 
                     {unactivatedTotalCount > 0 && (
