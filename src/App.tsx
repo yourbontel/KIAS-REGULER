@@ -10,7 +10,6 @@ import {
   SetoranRecord,
 } from './data/students';
 import { BabExamView } from './components/BabExamView';
-import { TashrifSimulator } from './components/TashrifSimulator';
 import { StudentRosterView } from './components/StudentRosterView';
 import { ClassRecapView } from './components/ClassRecapView';
 import { LoginView } from './components/LoginView';
@@ -27,7 +26,7 @@ import {
   hashPassword,
 } from './utils/auth';
 
-type ActiveSection = 'practice' | 'simulator' | 'roster' | 'recap' | 'my_progress';
+type ActiveSection = 'practice' | 'roster' | 'recap' | 'my_progress';
 
 const STORAGE_KEYS = {
   STUDENTS: 'albarkah_shorof_students_v1',
@@ -408,12 +407,10 @@ export default function App() {
         { id: 'recap', label: 'Rekap Nilai Per Bab', mobileLabel: 'Rekap Nilai' },
         { id: 'practice', label: 'Ujian Per Bab', mobileLabel: 'Ujian Bab' },
         { id: 'roster', label: 'Data Siswa & Kelas', mobileLabel: 'Data Siswa' },
-        { id: 'simulator', label: 'Tabel Tashrif', mobileLabel: 'Tabel Tashrif' },
       ]
     : [
         { id: 'practice', label: 'Ujian Per Bab', mobileLabel: 'Ujian Bab' },
         { id: 'my_progress', label: 'Nilai Saya', mobileLabel: 'Nilai Saya' },
-        { id: 'simulator', label: 'Tabel Tashrif', mobileLabel: 'Tabel Tashrif' },
       ];
 
   return (
@@ -527,8 +524,6 @@ export default function App() {
               <h1 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
                 {activeSection === 'practice' &&
                   'Ujian Shorof Per Bab (6 Bagian Evaluasi Terpadu)'}
-                {activeSection === 'simulator' &&
-                  'Tabel Referensi & Simulator Wazan Tashrif'}
                 {activeSection === 'roster' &&
                   'Daftar Siswa Terpisah: Reguler 1 & 2 (Ikhwan & Akhwat)'}
                 {activeSection === 'recap' &&
@@ -651,8 +646,6 @@ export default function App() {
           />
         )}
 
-        {activeSection === 'simulator' && <TashrifSimulator />}
-
         {isSuperadmin && activeSection === 'roster' && (
           <StudentRosterView
             students={students}
@@ -703,14 +696,6 @@ export default function App() {
               className="hover:text-slate-900 transition-colors"
             >
               Ujian Per Bab
-            </button>
-            <span aria-hidden="true">·</span>
-            <button
-              type="button"
-              onClick={() => setActiveSection('simulator')}
-              className="hover:text-slate-900 transition-colors"
-            >
-              Tabel Tashrif
             </button>
             {isSuperadmin ? (
               <>
