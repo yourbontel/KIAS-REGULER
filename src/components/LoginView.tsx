@@ -10,9 +10,20 @@ import {
   KeyRound,
   AlertCircle,
   BookOpen,
+  ChevronRight,
+  MapPin,
+  Users,
+  X,
 } from 'lucide-react';
 import { Student, StudentClass, StudentGender } from '../data/students';
 import { StudentPasswordMap } from '../utils/auth';
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 interface LoginViewProps {
   students: Student[];
@@ -227,98 +238,187 @@ export const LoginView: React.FC<LoginViewProps> = ({
                       </div>
                     )}
 
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs font-semibold text-slate-700">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-emerald-700" />
                           1. Cari &amp; Pilih Nama Anda
                         </label>
-                        <span className="text-[11px] text-slate-500 tabular-nums">
-                          {filteredStudents.length} siswa ditampilkan
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 tabular-nums">
+                          {filteredStudents.length} siswa
                         </span>
                       </div>
 
-                      {/* Filters */}
-                      <div className="grid grid-cols-2 gap-2 mb-2.5">
-                        <select
+                      {/* Segmented Pill Filters */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div
+                          role="group"
                           aria-label="Filter Kelas"
-                          value={filterClass}
-                          onChange={(e) =>
-                            setFilterClass(e.target.value as 'Semua' | StudentClass)
-                          }
-                          className="px-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-emerald-600"
+                          className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/80"
                         >
-                          <option value="Semua">Semua Kelas</option>
-                          <option value="Reguler 1">Reguler 1</option>
-                          <option value="Reguler 2">Reguler 2</option>
-                        </select>
-                        <select
+                          {(
+                            [
+                              { value: 'Semua', label: 'Semua' },
+                              { value: 'Reguler 1', label: 'Reguler 1' },
+                              { value: 'Reguler 2', label: 'Reguler 2' },
+                            ] as const
+                          ).map((opt) => {
+                            const active = filterClass === opt.value;
+                            return (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => setFilterClass(opt.value)}
+                                className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${
+                                  active
+                                    ? 'bg-white text-emerald-800 shadow-xs ring-1 ring-emerald-200'
+                                    : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div
+                          role="group"
                           aria-label="Filter Kelompok"
-                          value={filterGender}
-                          onChange={(e) =>
-                            setFilterGender(e.target.value as 'Semua' | StudentGender)
-                          }
-                          className="px-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-emerald-600"
+                          className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/80"
                         >
-                          <option value="Semua">Ikhwan &amp; Akhwat</option>
-                          <option value="Ikhwan">Ikhwan</option>
-                          <option value="Akhwat">Akhwat</option>
-                        </select>
+                          {(
+                            [
+                              { value: 'Semua', label: 'Semua' },
+                              { value: 'Ikhwan', label: 'Ikhwan' },
+                              { value: 'Akhwat', label: 'Akhwat' },
+                            ] as const
+                          ).map((opt) => {
+                            const active = filterGender === opt.value;
+                            return (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => setFilterGender(opt.value)}
+                                className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${
+                                  active
+                                    ? 'bg-white text-emerald-800 shadow-xs ring-1 ring-emerald-200'
+                                    : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
 
                       {/* Search Box */}
-                      <div className="relative mb-2.5">
-                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <div className="relative">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <input
                           type="text"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           placeholder="Ketik nama lengkap atau asal kota Anda..."
-                          className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm bg-[#F8FAFC] border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-600"
+                          className="w-full pl-10 pr-9 py-2.5 text-xs sm:text-sm bg-white border border-slate-200 rounded-xl placeholder:text-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 transition-shadow"
                         />
+                        {searchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setSearchQuery('')}
+                            aria-label="Hapus pencarian"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
 
                       {/* Student List */}
-                      <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-[#F8FAFC]">
+                      <div className="max-h-72 overflow-y-auto border border-slate-200 rounded-xl bg-slate-50/60 p-1.5 space-y-1">
                         {filteredStudents.length === 0 ? (
-                          <div className="p-6 text-center text-xs text-slate-500">
-                            Nama tidak ditemukan. Coba ubah filter atau kata kunci pencarian.
+                          <div className="py-8 px-4 text-center space-y-2">
+                            <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                              <Search className="w-4 h-4" />
+                            </div>
+                            <div className="text-xs font-medium text-slate-600">
+                              Nama siswa tidak ditemukan
+                            </div>
+                            <div className="text-[11px] text-slate-400">
+                              Coba ubah filter kelas, kelompok, atau kata kunci pencarian.
+                            </div>
                           </div>
                         ) : (
                           filteredStudents.map((st) => {
                             const hasPw = Boolean(studentPasswords[st.id]);
                             const isDemo = st.id.startsWith('demo-');
+                            const isReg1 = st.kelas === 'Reguler 1';
                             return (
                               <button
                                 key={st.id}
                                 type="button"
                                 onClick={() => handleSelectStudent(st.id)}
-                                className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left hover:bg-emerald-50/70 transition-colors"
+                                className="group w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg bg-white border border-transparent hover:border-emerald-200 hover:bg-emerald-50/50 text-left transition-all"
                               >
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
-                                      {st.name}
-                                    </span>
-                                    {isDemo && (
-                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-900 text-white shrink-0">
-                                        DEMO
-                                      </span>
-                                    )}
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div
+                                    className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border ${
+                                      isDemo
+                                        ? 'bg-slate-900 text-white border-slate-900'
+                                        : st.gender === 'Ikhwan'
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                        : 'bg-teal-50 text-teal-800 border-teal-200'
+                                    }`}
+                                  >
+                                    {getInitials(st.name)}
                                   </div>
-                                  <div className="text-[11px] text-slate-500 mt-0.5">
-                                    {st.kelas} · {st.gender}
-                                    {st.kota ? ` · ${st.kota}` : ''}
+
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-xs sm:text-sm font-semibold text-slate-900 group-hover:text-emerald-950 truncate">
+                                        {st.name}
+                                      </span>
+                                      {isDemo && (
+                                        <span className="text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded bg-slate-900 text-white shrink-0">
+                                          DEMO
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                      <span
+                                        className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
+                                          isReg1
+                                            ? 'bg-emerald-50 text-emerald-800'
+                                            : 'bg-sky-50 text-sky-800'
+                                        }`}
+                                      >
+                                        {st.kelas}
+                                      </span>
+                                      <span className="text-[11px] text-slate-500">
+                                        {st.gender}
+                                      </span>
+                                      {st.kota && (
+                                        <span className="inline-flex items-center gap-0.5 text-[11px] text-slate-400">
+                                          <MapPin className="w-2.5 h-2.5" />
+                                          {st.kota}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                                <span
-                                  className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                                    hasPw
-                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                      : 'bg-amber-50 text-amber-800 border-amber-200'
-                                  }`}
-                                >
-                                  {hasPw ? 'Aktif' : 'Buat Password'}
-                                </span>
+
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span
+                                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                                      hasPw
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                                    }`}
+                                  >
+                                    {hasPw ? 'Aktif' : 'Buat Password'}
+                                  </span>
+                                  <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-emerald-700 group-hover:translate-x-0.5 transition-all" />
+                                </div>
                               </button>
                             );
                           })
