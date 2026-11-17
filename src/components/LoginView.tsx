@@ -51,6 +51,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [studentPassword, setStudentPassword] = useState('');
   const [studentConfirmPassword, setStudentConfirmPassword] = useState('');
+  const [identityConfirmed, setIdentityConfirmed] = useState(false);
+  const [showIdentityConfirmPopup, setShowIdentityConfirmPopup] = useState(false);
   const [showStudentPass, setShowStudentPass] = useState(false);
   const [studentError, setStudentError] = useState<string | null>(null);
 
@@ -91,7 +93,16 @@ export const LoginView: React.FC<LoginViewProps> = ({
     setSelectedStudentId(studentId);
     setStudentPassword('');
     setStudentConfirmPassword('');
+    setIdentityConfirmed(false);
+    setShowIdentityConfirmPopup(false);
     setStudentError(null);
+  };
+
+  const handleConfirmIdentityAndRegister = () => {
+    if (!selectedStudent) return;
+    setShowIdentityConfirmPopup(false);
+    const err = onRegisterStudentPassword(selectedStudent.id, studentPassword);
+    if (err) setStudentError(err);
   };
 
   const handleStudentSubmit = (e: React.FormEvent) => {
@@ -112,8 +123,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
         setStudentError('Konfirmasi password tidak cocok.');
         return;
       }
-      const err = onRegisterStudentPassword(selectedStudent.id, studentPassword);
-      if (err) setStudentError(err);
+      if (!identityConfirmed) {
+        setStudentError(
+          `Centang kotak verifikasi identitas untuk memastikan bahwa "${selectedStudent.name}" benar-benar nama Anda.`
+        );
+        return;
+      }
+      setShowIdentityConfirmPopup(true);
     } else {
       if (!studentPassword) {
         setStudentError('Masukkan password Anda.');
@@ -449,6 +465,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
                           setSelectedStudentId('');
                           setStudentPassword('');
                           setStudentConfirmPassword('');
+                          setIdentityConfirmed(false);
+                          setShowIdentityConfirmPopup(false);
                           setStudentError(null);
                         }}
                         className="shrink-0 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors"
@@ -510,6 +528,30 @@ export const LoginView: React.FC<LoginViewProps> = ({
                             className="w-full px-3.5 py-2.5 text-sm bg-[#F8FAFC] border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-600"
                           />
                         </div>
+
+                        {/* Verifikasi Kepemilikan Nama */}
+                        <label
+                          htmlFor="verify-student-identity"
+                          className={`flex items-start gap-2.5 p-3.5 rounded-xl border text-xs cursor-pointer transition-colors ${
+                            identityConfirmed
+                              ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950'
+                              : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+                          }`}
+                        >
+                          <input
+                            id="verify-student-identity"
+                            type="checkbox"
+                            checked={identityConfirmed}
+                            onChange={(e) => {
+                              setIdentityConfirmed(e.target.checked);
+                              setStudentError(null);
+                            }}
+                            className="mt-0.5 w-4 h-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-600 shrink-0"
+                          />
+                          <span>
+                            Saya memastikan bahwa nama <strong className="text-slate-900">{selectedStudent.name}</strong> ({selectedStudent.kelas} · Kelompok {selectedStudent.gender}{selectedStudent.kota ? ` · ${selectedStudent.kota}` : ''}) adalah benar-benar nama saya sendiri, bukan milik siswa lain.
+                          </span>
+                        </label>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -637,6 +679,93 @@ export const LoginView: React.FC<LoginViewProps> = ({
       <footer className="bg-white border-t border-slate-200 py-4 px-6 text-center text-xs text-slate-500">
         Madrasah Shorof Al-Barkah · Sistem Latihan Tashrif Kelas Reguler 1 &amp; Reguler 2
       </footer>
+
+      {/* Popup Konfirmasi Akhir Verifikasi Nama */}
+      {showIdentityConfirmPopup && selectedStudent && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4"
+          onClick={() => setShowIdentityConfirmPopup(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="verify-identity-modal-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden"
+          >
+            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3 bg-emerald-50/60">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                  <UserCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2
+                    id="verify-identity-modal-title"
+                    className="text-sm font-bold text-slate-900"
+                  >
+                    Verifikasi Nama Siswa
+                  </h2>
+                  <p className="text-[11px] text-slate-500">
+                    Pastikan tidak salah memilih nama teman
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowIdentityConfirmPopup(false)}
+                aria-label="Tutup konfirmasi"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                Apakah benar akun yang sedang Anda buatkan passwordnya ini adalah nama Anda sendiri?
+              </p>
+
+              <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-slate-200 space-y-1">
+                <div className="text-sm sm:text-base font-bold text-slate-900">
+                  {selectedStudent.name}
+                </div>
+                <div className="text-xs text-slate-600">
+                  {selectedStudent.kelas} · Kelompok {selectedStudent.gender}
+                  {selectedStudent.kota ? ` · Asal ${selectedStudent.kota}` : ''}
+                </div>
+              </div>
+
+              <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                Setelah disimpan, akun atas nama tersebut hanya bisa dibuka menggunakan password yang baru Anda buat.
+              </p>
+
+              <div className="flex items-center gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowIdentityConfirmPopup(false);
+                    setSelectedStudentId('');
+                    setStudentPassword('');
+                    setStudentConfirmPassword('');
+                    setIdentityConfirmed(false);
+                    setStudentError(null);
+                  }}
+                  className="px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                >
+                  Bukan, Ganti Nama
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmIdentityAndRegister}
+                  className="flex-1 py-2.5 px-4 text-xs sm:text-sm font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl transition-colors"
+                >
+                  Ya, Benar Nama Saya
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
