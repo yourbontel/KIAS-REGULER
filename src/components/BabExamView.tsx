@@ -27,6 +27,7 @@ import {
   getExamQuestionCount,
   speakArabic,
 } from '../utils/quizGenerator';
+import { BabScoreSummary, SECTION_NUMBERS, summarizeBabAttempts } from '../utils/babScores';
 
 interface BabExamViewProps {
   students: Student[];
@@ -74,6 +75,7 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
 
   // Active exam state
   const [activeExamBab, setActiveExamBab] = useState<ShorofBab | null>(null);
+  const [activeExamSection, setActiveExamSection] = useState<number | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -138,9 +140,14 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
     onSelectStudent,
   ]);
 
-  const startExamForBab = (bab: ShorofBab) => {
-    const generated = generateBabExamQuestions(bab.id);
+  const startExamForBab = (bab: ShorofBab, sectionNumber?: number) => {
+    const allQuestions = generateBabExamQuestions(bab.id);
+    const generated =
+      bab.sectionedExam && sectionNumber
+        ? allQuestions.filter((q) => q.sectionNumber === sectionNumber)
+        : allQuestions;
     setActiveExamBab(bab);
+    setActiveExamSection(bab.sectionedExam && sectionNumber ? sectionNumber : null);
     setQuestions(generated);
     setCurrentIdx(0);
     setAnswers({});
@@ -155,7 +162,8 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
     const targetBab =
       activeBabs.find((b) => b.id === requestedBabId) ||
       ALL_SHOROF_BABS.find((b) => b.id === requestedBabId);
-    if (targetBab) {
+    // Bab per-Bagian: siswa memilih sendiri Bagian yang ingin dikerjakan dari daftar
+    if (targetBab && !targetBab.sectionedExam) {
       startExamForBab(targetBab);
     }
     onClearRequestedBab?.();
@@ -168,45 +176,16 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
 
   // Per-bab summary for the active student
   const babStatsMap = useMemo(() => {
-    const map: Record<
-      string,
-      {
-        attemptCount: number;
-        bestScore: number | null;
-        latestScore: number | null;
-        latestTime: string | null;
-        passed: boolean;
-      }
-    > = {};
-
+    const map: Record<string, BabScoreSummary> = {};
     activeBabs.forEach((bab) => {
-      const babAttempts = studentAttempts.filter((a) => a.babId === bab.id);
-      if (babAttempts.length === 0) {
-        map[bab.id] = {
-          attemptCount: 0,
-          bestScore: null,
-          latestScore: null,
-          latestTime: null,
-          passed: false,
-        };
-      } else {
-        const bestScore = Math.max(...babAttempts.map((a) => a.score));
-        map[bab.id] = {
-          attemptCount: babAttempts.length,
-          bestScore,
-          latestScore: babAttempts[0].score,
-          latestTime: babAttempts[0].timestamp,
-          passed: bestScore >= PASSING_SCORE,
-        };
-      }
+      map[bab.id] = summarizeBabAttempts(bab, studentAttempts);
     });
-
     return map;
   }, [activeBabs, studentAttempts]);
 
   const overallSummary = useMemo(() => {
     const completedBabs = activeBabs.filter(
-      (b) => (babStatsMap[b.id]?.attemptCount ?? 0) > 0
+      (b) => babStatsMap[b.id]?.bestScore != null
     );
     const passedBabs = activeBabs.filter((b) => babStatsMap[b.id]?.passed);
     const avgBest =
@@ -270,7 +249,10 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
     onSaveAttempt({
       studentId: activeStudent.id,
       babId: activeExamBab.id,
-      babLabel: activeExamBab.kode,
+      babLabel: activeExamSection
+        ? `${activeExamBab.kode} · Bagian ${activeExamSection}`
+        : activeExamBab.kode,
+      sectionNumber: activeExamSection ?? undefined,
       mode: 'ujian_bab',
       score,
       correctCount,
@@ -310,6 +292,11 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                 ({activeExamBab.wazanLatin})
               </span>
             </h2>
+            {activeExamSection && (
+              <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-900 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                {EXAM_SECTIONS.find((s) => s.number === activeExamSection)?.title}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -331,6 +318,7 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                   return;
                 }
                 setActiveExamBab(null);
+                setActiveExamSection(null);
                 setSubmittedResult(null);
               }}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors"
@@ -371,7 +359,8 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                   )}
                 </div>
                 <h3 className="font-display text-2xl sm:text-3xl font-bold text-slate-900">
-                  Nilai {activeExamBab.kode}:{' '}
+                  Nilai {activeExamBab.kode}
+                  {activeExamSection ? ` · Bagian ${activeExamSection}` : ''}:{' '}
                   <span
                     className={`tabular-nums ${
                       submittedResult.passed ? 'text-emerald-700' : 'text-amber-700'
@@ -394,21 +383,24 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
               <div className="flex flex-wrap items-center gap-2.5 shrink-0">
                 <button
                   type="button"
-                  onClick={() => startExamForBab(activeExamBab)}
+                  onClick={() =>
+                    startExamForBab(activeExamBab, activeExamSection ?? undefined)
+                  }
                   className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  Ujian Ulang Bab Ini
+                  {activeExamSection ? 'Ulangi Bagian Ini' : 'Ujian Ulang Bab Ini'}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setActiveExamBab(null);
+                    setActiveExamSection(null);
                     setSubmittedResult(null);
                   }}
                   className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors"
                 >
-                  Pilih Bab Lain
+                  {activeExamSection ? 'Pilih Bagian Lain' : 'Pilih Bab Lain'}
                 </button>
               </div>
             </div>
@@ -932,14 +924,158 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
               {group.items.map((bab) => {
-                const stat = babStatsMap[bab.id] ?? {
+                const stat: BabScoreSummary = babStatsMap[bab.id] ?? {
                   attemptCount: 0,
                   bestScore: null,
                   latestScore: null,
                   latestTime: null,
                   passed: false,
+                  sectioned: false,
+                  completedSections: 0,
+                  totalSections: 0,
+                  sectionBest: {},
+                  sectionAttemptCount: {},
                 };
                 const hasAttempt = stat.attemptCount > 0;
+
+                // Bab dengan 6 Bagian yang dikerjakan satu per satu
+                if (bab.sectionedExam) {
+                  const perSection = bab.questionsPerSection ?? 2;
+                  return (
+                    <div
+                      key={bab.id}
+                      className="md:col-span-2 xl:col-span-3 bg-white border border-slate-200 rounded-xl p-5 space-y-5"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="space-y-2 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                              {bab.kode}
+                            </span>
+                            <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                              Dikerjakan per Bagian
+                            </span>
+                            {stat.bestScore !== null ? (
+                              <span
+                                className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                                  stat.passed
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                    : 'bg-amber-50 text-amber-800 border-amber-200'
+                                }`}
+                              >
+                                {stat.passed ? 'Lulus' : 'Belum Lulus'}
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                                {stat.completedSections === 0
+                                  ? 'Belum Ujian'
+                                  : `${stat.completedSections}/${stat.totalSections} Bagian selesai`}
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-arabic text-2xl font-bold text-slate-900">
+                              {bab.wazanAr}
+                            </div>
+                            <div className="text-xs font-semibold text-slate-700 mt-0.5">
+                              {bab.namaBab}
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-1">
+                              {bab.kaidahAinFiil}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="px-4 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-center shrink-0">
+                          <div className="text-[11px] text-slate-500">Nilai Bab (Rata-rata 6 Bagian)</div>
+                          <div
+                            className={`text-xl font-bold tabular-nums ${
+                              stat.bestScore === null
+                                ? 'text-slate-400'
+                                : stat.passed
+                                ? 'text-emerald-700'
+                                : 'text-amber-700'
+                            }`}
+                          >
+                            {stat.bestScore ?? '—'}
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            {stat.bestScore === null
+                              ? 'Selesaikan ke-6 Bagian'
+                              : `KKM ${PASSING_SCORE}`}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {SECTION_NUMBERS.map((sectionNo) => {
+                          const sectionMeta = EXAM_SECTIONS.find((s) => s.number === sectionNo);
+                          const best = stat.sectionBest[sectionNo];
+                          const tries = stat.sectionAttemptCount[sectionNo] ?? 0;
+                          const done = best !== undefined;
+                          const sectionPassed = done && best >= PASSING_SCORE;
+                          return (
+                            <div
+                              key={sectionNo}
+                              className="border border-slate-200 rounded-xl p-4 flex flex-col justify-between gap-3 bg-slate-50/50"
+                            >
+                              <div className="space-y-1.5">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[11px] font-bold text-slate-700">
+                                    Bagian {sectionNo}
+                                  </span>
+                                  {done ? (
+                                    <span
+                                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                        sectionPassed
+                                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                          : 'bg-amber-50 text-amber-800 border-amber-200'
+                                      }`}
+                                    >
+                                      Nilai {best}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                                      Belum dikerjakan
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs font-semibold text-slate-800 leading-snug">
+                                  {sectionMeta?.title.replace(/^Bagian \d+:\s*/, '')}
+                                </div>
+                                <div className="text-[11px] text-slate-500 tabular-nums">
+                                  {perSection} soal
+                                  {tries > 0 ? ` · ${tries}x dikerjakan` : ''}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => startExamForBab(bab, sectionNo)}
+                                className={`w-full inline-flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-lg transition-colors ${
+                                  done
+                                    ? 'bg-slate-900 hover:bg-slate-800 text-white'
+                                    : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                                }`}
+                              >
+                                {done ? (
+                                  <>
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    Ulangi Bagian {sectionNo}
+                                  </>
+                                ) : (
+                                  <>
+                                    <Play className="w-3.5 h-3.5" />
+                                    Mulai Bagian {sectionNo}
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }
                 return (
                   <div
                     key={bab.id}

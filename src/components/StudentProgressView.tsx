@@ -7,6 +7,7 @@ import {
   Student,
 } from '../data/students';
 import { getBabsForClass } from '../data/shorofData';
+import { summarizeBabAttempts } from '../utils/babScores';
 
 interface StudentProgressViewProps {
   student: Student;
@@ -41,25 +42,20 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
 
   const perBabRows = useMemo(() => {
     return classBabs.map((bab) => {
-      const babAttempts = myAttempts.filter((a) => a.babId === bab.id);
-      const bestScore =
-        babAttempts.length > 0
-          ? Math.max(...babAttempts.map((a) => a.score))
-          : null;
-      const latestScore = babAttempts.length > 0 ? babAttempts[0].score : null;
-      const passed = bestScore !== null && bestScore >= PASSING_SCORE;
+      const summary = summarizeBabAttempts(bab, myAttempts);
       return {
         bab,
-        attemptCount: babAttempts.length,
-        bestScore,
-        latestScore,
-        lastTime: babAttempts[0]?.timestamp || null,
-        passed,
+        summary,
+        attemptCount: summary.attemptCount,
+        bestScore: summary.bestScore,
+        latestScore: summary.latestScore,
+        lastTime: summary.latestTime,
+        passed: summary.passed,
       };
     });
   }, [classBabs, myAttempts]);
 
-  const completedBabsCount = perBabRows.filter((r) => r.attemptCount > 0).length;
+  const completedBabsCount = perBabRows.filter((r) => r.bestScore !== null).length;
   const passedBabsCount = perBabRows.filter((r) => r.passed).length;
   const avgBestScore =
     completedBabsCount > 0
@@ -151,6 +147,11 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
                         <Clock className="w-3 h-3" />
                         Belum Ujian
                       </span>
+                    ) : row.bestScore === null ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">
+                        <Clock className="w-3 h-3" />
+                        {row.summary.completedSections}/{row.summary.totalSections} Bagian
+                      </span>
                     ) : row.passed ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                         <CheckCircle2 className="w-3 h-3" />
@@ -188,7 +189,12 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
                           : 'bg-emerald-700 hover:bg-emerald-800 text-white'
                       }`}
                     >
-                      {row.attemptCount > 0 ? (
+                      {row.summary.sectioned ? (
+                        <>
+                          <Play className="w-3 h-3" />
+                          Pilih Bagian
+                        </>
+                      ) : row.attemptCount > 0 ? (
                         <>
                           <RotateCcw className="w-3 h-3" />
                           Ulangi

@@ -18,6 +18,8 @@ export interface QuizAttempt {
   timestamp: string;
   babId: string;
   babLabel: string;
+  /** Diisi bila ujian dikerjakan per Bagian (mis. Reguler 1 Bab 1) */
+  sectionNumber?: number;
   mode: 'ujian_bab' | 'istilahi' | 'lughawi' | 'tebak_shighat' | 'susun_tashrif';
   score: number;
   correctCount: number;

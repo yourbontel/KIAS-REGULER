@@ -99,6 +99,8 @@ export interface ShorofBab {
   bankBabId?: string;
   /** Number of exam questions per section (default 2, i.e. 12 total across 6 Bagian) */
   questionsPerSection?: number;
+  /** Jika true, 6 Bagian soal dikerjakan satu per satu (bukan sekaligus) dengan nilai per Bagian */
+  sectionedExam?: boolean;
   wazanIstilahi: {
     madhi: string;
     mudhari: string;
@@ -1269,6 +1271,7 @@ const R1_BAB1: ShorofBab = {
   namaBab: 'Tsulatsi Mujarrod Bab 1 (Fathu-Dhammin)',
   kategori: 'Tsulatsi Mujarrod',
   questionsPerSection: 10,
+  sectionedExam: true,
   mauzunList: [
     buildBab1MauzunVerb('kafara', 'r1-bab-1', ['ك', 'ف', 'ر'], 'Mengingkari', 'كُفْرًا'),
     buildBab1MauzunVerb('qatala', 'r1-bab-1', ['ق', 'ت', 'ل'], 'Membunuh', 'قَتْلًا'),

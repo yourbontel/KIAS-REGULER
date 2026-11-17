@@ -8,7 +8,8 @@ import {
   StudentClass,
   StudentGender,
 } from '../data/students';
-import { getBabsForClass } from '../data/shorofData';
+import { ALL_SHOROF_BABS, getBabsForClass } from '../data/shorofData';
+import { summarizeBabAttempts } from '../utils/babScores';
 
 interface ClassRecapViewProps {
   students: Student[];
@@ -62,17 +63,29 @@ export const ClassRecapView: React.FC<ClassRecapViewProps> = ({
 
   const activeBabs = useMemo(() => getBabsForClass(matrixClass), [matrixClass]);
 
-  // Precompute best score per student per bab
-  const bestScoreMap = useMemo(() => {
-    const map: Record<string, Record<string, number>> = {};
+  // Precompute best score per student per bab (Bab per-Bagian = rata-rata 6 Bagian bila lengkap)
+  const { bestScoreMap, partialSectionsMap } = useMemo(() => {
+    const byStudent: Record<string, QuizAttempt[]> = {};
     attempts.forEach((att) => {
-      if (!map[att.studentId]) map[att.studentId] = {};
-      const prev = map[att.studentId][att.babId];
-      if (prev === undefined || att.score > prev) {
-        map[att.studentId][att.babId] = att.score;
-      }
+      if (!byStudent[att.studentId]) byStudent[att.studentId] = [];
+      byStudent[att.studentId].push(att);
     });
-    return map;
+
+    const map: Record<string, Record<string, number>> = {};
+    const partial: Record<string, Record<string, number>> = {};
+    Object.entries(byStudent).forEach(([studentId, list]) => {
+      map[studentId] = {};
+      partial[studentId] = {};
+      ALL_SHOROF_BABS.forEach((bab) => {
+        const summary = summarizeBabAttempts(bab, list);
+        if (summary.bestScore !== null) {
+          map[studentId][bab.id] = summary.bestScore;
+        } else if (summary.sectioned && summary.completedSections > 0) {
+          partial[studentId][bab.id] = summary.completedSections;
+        }
+      });
+    });
+    return { bestScoreMap: map, partialSectionsMap: partial };
   }, [attempts]);
 
   const filteredMatrixStudents = useMemo(() => {
@@ -333,6 +346,13 @@ export const ClassRecapView: React.FC<ClassRecapViewProps> = ({
                               }`}
                             >
                               {val}
+                            </span>
+                          ) : partialSectionsMap[st.id]?.[bab.id] ? (
+                            <span
+                              title="Bagian yang sudah dikerjakan"
+                              className="inline-block min-w-[2.2rem] px-1.5 py-0.5 rounded font-semibold text-[10px] bg-sky-50 text-sky-800 border border-sky-200"
+                            >
+                              {partialSectionsMap[st.id][bab.id]}/6
                             </span>
                           ) : (
                             <span className="text-slate-300">—</span>
