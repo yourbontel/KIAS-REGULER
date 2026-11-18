@@ -30,7 +30,7 @@ interface StudentRosterViewProps {
     gender: StudentGender
   ) => void;
   studentPasswords?: StudentPasswordMap;
-  onResetStudentPassword?: (studentId: string) => void;
+  onResetStudentPassword?: (studentId: string) => Promise<unknown>;
 }
 
 const CORE_BABS = ['Bab 1', 'Bab 2', 'Bab 3', 'Bab 4', 'Bab 5', 'Bab 6'];
@@ -254,7 +254,7 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
                                   `Reset password untuk ${st.name}? Siswa perlu membuat password baru saat login berikutnya.`
                                 )
                               ) {
-                                onResetStudentPassword(st.id);
+                                void onResetStudentPassword(st.id);
                               }
                             }}
                             title="Reset password siswa"

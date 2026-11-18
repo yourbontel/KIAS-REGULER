@@ -6,7 +6,7 @@ interface AccountModalProps {
   onClose: () => void;
   accountTitle: string;
   accountSubtitle: string;
-  onChangePassword: (oldPassword: string, newPassword: string) => string | null;
+  onChangePassword: (oldPassword: string, newPassword: string) => Promise<string | null>;
 }
 
 export const AccountModal: React.FC<AccountModalProps> = ({
@@ -22,10 +22,11 @@ export const AccountModal: React.FC<AccountModalProps> = ({
   const [showPasswords, setShowPasswords] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(false);
@@ -43,7 +44,9 @@ export const AccountModal: React.FC<AccountModalProps> = ({
       return;
     }
 
-    const err = onChangePassword(oldPassword, newPassword);
+    setBusy(true);
+    const err = await onChangePassword(oldPassword, newPassword);
+    setBusy(false);
     if (err) {
       setError(err);
       return;
@@ -158,9 +161,10 @@ export const AccountModal: React.FC<AccountModalProps> = ({
             </button>
             <button
               type="submit"
+              disabled={busy}
               className="px-4 py-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg transition-colors"
             >
-              Simpan Password
+              {busy ? 'Menyimpan...' : 'Simpan Password'}
             </button>
           </div>
         </form>

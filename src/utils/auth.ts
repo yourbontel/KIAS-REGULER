@@ -19,7 +19,7 @@ export interface SuperadminConfig {
   displayName: string;
 }
 
-export type StudentPasswordMap = Record<string, string>;
+export type StudentPasswordMap = Record<string, boolean>;
 
 export const AUTH_STORAGE_KEYS = {
   SESSION: 'albarkah_shorof_session_v1',
@@ -73,19 +73,6 @@ export function getInitialSuperadminConfig(): SuperadminConfig {
     ),
     displayName: DEFAULT_SUPERADMIN_CREDENTIALS.displayName,
   };
-}
-
-export function getInitialStudentPasswords(): StudentPasswordMap {
-  try {
-    const saved = localStorage.getItem(AUTH_STORAGE_KEYS.STUDENT_PASSWORDS);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed && typeof parsed === 'object') return parsed;
-    }
-  } catch {
-    // ignore
-  }
-  return {};
 }
 
 export function getInitialSession(): AuthSession | null {

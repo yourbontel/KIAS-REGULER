@@ -22,10 +22,9 @@ import {
   StudentPasswordMap,
   SuperadminConfig,
   getInitialSession,
-  getInitialStudentPasswords,
   getInitialSuperadminConfig,
-  hashPassword,
 } from './utils/auth';
+import { loadStudentCredentialStatus, loadSuperadminUsername, requestStudentCredential, verifySuperadmin } from './utils/studentCredentials';
 
 type ActiveSection = 'practice' | 'roster' | 'recap' | 'my_progress' | 'ranking';
 
@@ -42,10 +41,11 @@ export default function App() {
   const [superadminConfig, setSuperadminConfig] = useState<SuperadminConfig>(() =>
     getInitialSuperadminConfig()
   );
-  const [studentPasswords, setStudentPasswords] = useState<StudentPasswordMap>(() =>
-    getInitialStudentPasswords()
-  );
+  const [superadminReady, setSuperadminReady] = useState(false);
+  const [studentPasswords, setStudentPasswords] = useState<StudentPasswordMap>({});
   const [session, setSession] = useState<AuthSession | null>(() => getInitialSession());
+  const [adminToken, setAdminToken] = useState<string | null>(null);
+  const [legacyImported, setLegacyImported] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [requestedBabId, setRequestedBabId] = useState<string | null>(null);
 
@@ -146,15 +146,36 @@ export default function App() {
   }, [superadminConfig]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        AUTH_STORAGE_KEYS.STUDENT_PASSWORDS,
-        JSON.stringify(studentPasswords)
-      );
-    } catch {
-      // ignore storage errors
-    }
-  }, [studentPasswords]);
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const activeAccounts = await loadStudentCredentialStatus();
+        if (!cancelled) setStudentPasswords(activeAccounts);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    void refresh();
+    const interval = window.setInterval(refresh, 30000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadSuperadminUsername().then((username) => {
+      if (!cancelled) {
+        setSuperadminConfig((current) => ({ ...current, username }));
+        setSuperadminReady(true);
+      }
+    }).catch((error) => {
+      console.error(error);
+      if (!cancelled) setSuperadminReady(true);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     try {
@@ -183,13 +204,26 @@ export default function App() {
     }
   }, [loggedInStudent]);
 
-  const handleLoginSuperadmin = (username: string, password: string): string | null => {
+  const handleLoginSuperadmin = async (username: string, password: string): Promise<string | null> => {
+    if (!superadminReady) return 'Memuat akun superadmin. Silakan coba lagi.';
     if (username !== superadminConfig.username) {
       return 'Username superadmin tidak ditemukan.';
     }
-    const candidateHash = hashPassword(password, superadminConfig.username);
-    if (candidateHash !== superadminConfig.passwordHash) {
-      return 'Password superadmin salah.';
+    const result = await verifySuperadmin(username, password);
+    if (result.error) return result.error;
+    setAdminToken(result.token);
+    try {
+      const legacy = JSON.parse(localStorage.getItem('albarkah_shorof_student_passwords_v1') || '{}');
+      if (Object.keys(legacy).length && !legacyImported) {
+        await fetch('/api/student-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${result.token}` },
+          body: JSON.stringify({ action: 'import-legacy', passwordHashes: legacy }),
+        });
+        setLegacyImported(true);
+      }
+    } catch (error) {
+      console.error('Legacy student account migration failed', error);
     }
     setSession({
       role: 'superadmin',
@@ -201,17 +235,18 @@ export default function App() {
     return null;
   };
 
-  const handleRegisterStudentPassword = (
+  const handleRegisterStudentPassword = async (
     studentId: string,
     newPassword: string
-  ): string | null => {
+  ): Promise<string | null> => {
     const student = students.find((s) => s.id === studentId);
     if (!student) return 'Data siswa tidak ditemukan.';
     if (studentPasswords[studentId]) {
       return 'Siswa ini sudah memiliki password. Silakan login menggunakan password Anda.';
     }
-    const passwordHash = hashPassword(newPassword, studentId);
-    setStudentPasswords((prev) => ({ ...prev, [studentId]: passwordHash }));
+    const error = await requestStudentCredential('register', studentId, { newPassword });
+    if (error) return error;
+    setStudentPasswords((prev) => ({ ...prev, [studentId]: true }));
     setFilterClass(student.kelas);
     setFilterGender(student.gender);
     setSelectedStudentId(student.id);
@@ -224,16 +259,11 @@ export default function App() {
     return null;
   };
 
-  const handleLoginStudent = (studentId: string, password: string): string | null => {
+  const handleLoginStudent = async (studentId: string, password: string): Promise<string | null> => {
     const student = students.find((s) => s.id === studentId);
     if (!student) return 'Data siswa tidak ditemukan.';
-    const storedHash = studentPasswords[studentId];
-    if (!storedHash) {
-      return 'Akun belum memiliki password. Silakan buat password baru.';
-    }
-    if (hashPassword(password, studentId) !== storedHash) {
-      return 'Password salah. Silakan coba lagi atau hubungi Superadmin untuk reset.';
-    }
+    const error = await requestStudentCredential('login', studentId, { password });
+    if (error) return error;
     setFilterClass(student.kelas);
     setFilterGender(student.gender);
     setSelectedStudentId(student.id);
@@ -246,46 +276,55 @@ export default function App() {
     return null;
   };
 
-  const handleResetStudentPassword = (studentId: string) => {
+  const handleResetStudentPassword = async (studentId: string) => {
+    if (session?.role !== 'superadmin') return 'Sesi superadmin diperlukan.';
+    const error = await requestStudentCredential('reset', studentId, {
+      adminToken: adminToken || undefined,
+    });
+    if (error) {
+      window.alert(error);
+      return error;
+    }
     setStudentPasswords((prev) => {
       const next = { ...prev };
       delete next[studentId];
       return next;
     });
+    return null;
   };
 
-  const handleChangeOwnPassword = (
+  const handleChangeOwnPassword = async (
     oldPassword: string,
     newPassword: string
-  ): string | null => {
+  ): Promise<string | null> => {
     if (!session) return 'Sesi tidak ditemukan.';
     if (session.role === 'superadmin') {
-      if (
-        hashPassword(oldPassword, superadminConfig.username) !==
-        superadminConfig.passwordHash
-      ) {
-        return 'Password saat ini salah.';
-      }
+      const error = await requestStudentCredential('change-admin-password', 'superadmin', {
+        password: oldPassword,
+        newPassword,
+        adminUsername: session.username,
+        adminToken: adminToken || undefined,
+      });
+      if (error) return error;
       setSuperadminConfig((prev) => ({
         ...prev,
-        passwordHash: hashPassword(newPassword, prev.username),
+        passwordHash: 'server-managed',
       }));
       return null;
     }
 
-    const stored = studentPasswords[session.studentId];
-    if (!stored || hashPassword(oldPassword, session.studentId) !== stored) {
-      return 'Password saat ini salah.';
-    }
-    setStudentPasswords((prev) => ({
-      ...prev,
-      [session.studentId]: hashPassword(newPassword, session.studentId),
-    }));
+    const error = await requestStudentCredential('change', session.studentId, {
+      password: oldPassword,
+      newPassword,
+    });
+    if (error) return error;
+    setStudentPasswords((prev) => ({ ...prev, [session.studentId]: true }));
     return null;
   };
 
   const handleLogout = () => {
     setSession(null);
+    setAdminToken(null);
     setShowAccountModal(false);
     setActiveSection('practice');
   };

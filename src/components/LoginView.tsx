@@ -28,9 +28,9 @@ function getInitials(name: string): string {
 interface LoginViewProps {
   students: Student[];
   studentPasswords: StudentPasswordMap;
-  onLoginSuperadmin: (username: string, password: string) => string | null;
-  onLoginStudent: (studentId: string, password: string) => string | null;
-  onRegisterStudentPassword: (studentId: string, newPassword: string) => string | null;
+  onLoginSuperadmin: (username: string, password: string) => Promise<string | null>;
+  onLoginStudent: (studentId: string, password: string) => Promise<string | null>;
+  onRegisterStudentPassword: (studentId: string, newPassword: string) => Promise<string | null>;
 }
 
 type LoginTab = 'student' | 'superadmin';
@@ -55,12 +55,14 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [showIdentityConfirmPopup, setShowIdentityConfirmPopup] = useState(false);
   const [showStudentPass, setShowStudentPass] = useState(false);
   const [studentError, setStudentError] = useState<string | null>(null);
+  const [studentBusy, setStudentBusy] = useState(false);
 
   // Superadmin login state
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [showAdminPass, setShowAdminPass] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
+  const [adminBusy, setAdminBusy] = useState(false);
 
   const filteredStudents = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -98,14 +100,16 @@ export const LoginView: React.FC<LoginViewProps> = ({
     setStudentError(null);
   };
 
-  const handleConfirmIdentityAndRegister = () => {
+  const handleConfirmIdentityAndRegister = async () => {
     if (!selectedStudent) return;
     setShowIdentityConfirmPopup(false);
-    const err = onRegisterStudentPassword(selectedStudent.id, studentPassword);
+    setStudentBusy(true);
+    const err = await onRegisterStudentPassword(selectedStudent.id, studentPassword);
     if (err) setStudentError(err);
+    setStudentBusy(false);
   };
 
-  const handleStudentSubmit = (e: React.FormEvent) => {
+  const handleStudentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStudentError(null);
 
@@ -135,20 +139,24 @@ export const LoginView: React.FC<LoginViewProps> = ({
         setStudentError('Masukkan password Anda.');
         return;
       }
-      const err = onLoginStudent(selectedStudent.id, studentPassword);
+      setStudentBusy(true);
+      const err = await onLoginStudent(selectedStudent.id, studentPassword);
       if (err) setStudentError(err);
+      setStudentBusy(false);
     }
   };
 
-  const handleAdminSubmit = (e: React.FormEvent) => {
+  const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAdminError(null);
     if (!adminUsername.trim() || !adminPassword) {
       setAdminError('Username dan password wajib diisi.');
       return;
     }
-    const err = onLoginSuperadmin(adminUsername.trim(), adminPassword);
+    setAdminBusy(true);
+    const err = await onLoginSuperadmin(adminUsername.trim(), adminPassword);
     if (err) setAdminError(err);
+    setAdminBusy(false);
   };
 
   return (
@@ -597,9 +605,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
                     <button
                       type="submit"
+                      disabled={studentBusy}
                       className="w-full py-2.5 px-4 text-sm font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl transition-colors"
                     >
-                      {hasExistingPassword
+                      {studentBusy ? 'Memproses...' : hasExistingPassword
                         ? 'Masuk sebagai Siswa'
                         : 'Simpan Password & Masuk'}
                     </button>
@@ -666,9 +675,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
                 <button
                   type="submit"
+                  disabled={adminBusy}
                   className="w-full py-2.5 px-4 text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors"
                 >
-                  Masuk sebagai Superadmin
+                  {adminBusy ? 'Memproses...' : 'Masuk sebagai Superadmin'}
                 </button>
               </form>
             )}
@@ -757,6 +767,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 <button
                   type="button"
                   onClick={handleConfirmIdentityAndRegister}
+                  disabled={studentBusy}
                   className="flex-1 py-2.5 px-4 text-xs sm:text-sm font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl transition-colors"
                 >
                   Ya, Benar Nama Saya
