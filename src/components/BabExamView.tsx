@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   Award,
   BookOpenCheck,
   CheckCircle2,
@@ -10,6 +11,7 @@ import {
   Play,
   RotateCcw,
   Search,
+  X,
   XCircle,
 } from 'lucide-react';
 import {
@@ -91,6 +93,14 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
   );
   const [submitWarning, setSubmitWarning] = useState<string | null>(null);
   const [openSectionDropdown, setOpenSectionDropdown] = useState<string | null>(null);
+  const [pendingStartSection, setPendingStartSection] = useState<{
+    bab: ShorofBab;
+    sectionNumber: number;
+    sectionTitle: string;
+    groupName: string;
+    localNumber: number;
+    questionCount: number;
+  } | null>(null);
 
   const filteredGroupStudents = useMemo(() => {
     const q = studentSearch.trim().toLowerCase();
@@ -149,6 +159,19 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
   ]);
 
   const startExamForBab = (bab: ShorofBab, sectionNumber?: number) => {
+    if (
+      bab.sectionedExam &&
+      sectionNumber &&
+      activeStudent &&
+      attempts.some(
+        (a) =>
+          a.studentId === activeStudent.id &&
+          a.babId === bab.id &&
+          a.sectionNumber === sectionNumber
+      )
+    ) {
+      return;
+    }
     const allQuestions = generateBabExamQuestions(bab.id);
     const generated =
       bab.sectionedExam && sectionNumber
@@ -392,16 +415,16 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() =>
-                    startExamForBab(activeExamBab, activeExamSection ?? undefined)
-                  }
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  {activeExamSection ? 'Ulangi Bagian Ini' : 'Ujian Ulang Bab Ini'}
-                </button>
+                {!activeExamSection && (
+                  <button
+                    type="button"
+                    onClick={() => startExamForBab(activeExamBab)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Ujian Ulang Bab Ini
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -651,11 +674,6 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                           >
                             {opt.textAr}
                           </div>
-                          {opt.textSub && (
-                            <div className="text-[11px] text-slate-600 mt-0.5">
-                              {opt.textSub}
-                            </div>
-                          )}
                         </div>
                       </button>
                     );
@@ -1109,30 +1127,33 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                                           </div>
                                           <div className="text-[11px] text-slate-500 tabular-nums">
                                             {perSection} soal
-                                            {tries > 0 ? ` · ${tries}x dikerjakan` : ''}
+                                            {tries > 0 ? ' · Sudah dikerjakan' : ''}
                                           </div>
                                         </div>
-                                        <button
-                                          type="button"
-                                          onClick={() => startExamForBab(bab, sectionNo)}
-                                          className={`w-full inline-flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-lg transition-colors ${
-                                            done
-                                              ? 'bg-slate-900 hover:bg-slate-800 text-white'
-                                              : 'bg-emerald-700 hover:bg-emerald-800 text-white'
-                                          }`}
-                                        >
-                                          {done ? (
-                                            <>
-                                              <RotateCcw className="w-3.5 h-3.5" />
-                                              Ulangi Bagian {sec.localNumber}
-                                            </>
-                                          ) : (
-                                            <>
-                                              <Play className="w-3.5 h-3.5" />
-                                              Mulai Bagian {sec.localNumber}
-                                            </>
-                                          )}
-                                        </button>
+                                        {done ? (
+                                          <div className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 border border-slate-200">
+                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                            Sudah Dikerjakan
+                                          </div>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              setPendingStartSection({
+                                                bab,
+                                                sectionNumber: sectionNo,
+                                                sectionTitle: sec.title.replace(/^Bagian \d+:\s*/, ''),
+                                                groupName: sec.groupName,
+                                                localNumber: sec.localNumber,
+                                                questionCount: perSection,
+                                              })
+                                            }
+                                            className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-lg transition-colors bg-emerald-700 hover:bg-emerald-800 text-white"
+                                          >
+                                            <Play className="w-3.5 h-3.5" />
+                                            Mulai Bagian {sec.localNumber}
+                                          </button>
+                                        )}
                                       </div>
                                     );
                                   })}
@@ -1242,6 +1263,93 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
           </div>
         ))}
       </div>
+
+      {/* Popup Verifikasi Mulai Ujian Bagian */}
+      {pendingStartSection && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4"
+          onClick={() => setPendingStartSection(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="start-section-confirm-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden"
+          >
+            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3 bg-amber-50/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2
+                    id="start-section-confirm-title"
+                    className="text-sm font-bold text-slate-900"
+                  >
+                    Verifikasi Mulai Ujian Bagian
+                  </h2>
+                  <p className="text-[11px] text-slate-500">
+                    Pastikan Anda siap sebelum memulai ujian
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPendingStartSection(null)}
+                aria-label="Tutup verifikasi"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-slate-200 space-y-1.5">
+                <div className="text-[11px] font-semibold text-emerald-800">
+                  {pendingStartSection.bab.kode} · {pendingStartSection.groupName} Bagian{' '}
+                  {pendingStartSection.localNumber}
+                </div>
+                <div className="text-sm font-bold text-slate-900">
+                  {pendingStartSection.sectionTitle}
+                </div>
+                <div className="text-xs text-slate-600 tabular-nums">
+                  {pendingStartSection.questionCount} soal pilihan ganda
+                  {activeStudent ? ` · Siswa: ${activeStudent.name}` : ''}
+                </div>
+              </div>
+
+              <div className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3.5 py-2.5 leading-relaxed">
+                <strong>Perhatian:</strong> Setiap bagian hanya boleh dikerjakan{' '}
+                <strong>1 (satu) kali</strong> dan tidak dapat diulang. Pastikan Anda sudah
+                siap mengerjakan seluruh soal hingga selesai.
+              </div>
+
+              <div className="flex items-center gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setPendingStartSection(null)}
+                  className="flex-1 py-2.5 px-4 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = pendingStartSection;
+                    setPendingStartSection(null);
+                    startExamForBab(target.bab, target.sectionNumber);
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-4 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl transition-colors"
+                >
+                  <Play className="w-3.5 h-3.5" />
+                  Ya, Mulai Sekarang
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

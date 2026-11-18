@@ -21,10 +21,18 @@ import {
   AuthSession,
   StudentPasswordMap,
   SuperadminConfig,
+  getInitialAdminToken,
   getInitialSession,
   getInitialSuperadminConfig,
 } from './utils/auth';
 import { loadStudentCredentialStatus, loadSuperadminUsername, requestStudentCredential, verifySuperadmin } from './utils/studentCredentials';
+import {
+  clearAttemptsInDb,
+  loadStudentData,
+  saveQuizAttemptToDb,
+  toggleSetoranInDb,
+  upsertStudentInDb,
+} from './utils/studentData';
 
 type ActiveSection = 'practice' | 'roster' | 'recap' | 'my_progress' | 'ranking';
 
@@ -33,6 +41,20 @@ const STORAGE_KEYS = {
   ATTEMPTS: 'albarkah_shorof_attempts_v1',
   SETORAN: 'albarkah_shorof_setoran_v1',
 };
+
+function mergeStudentRecords(base: Student[], dbRecords: Student[]): Student[] {
+  if (dbRecords.length === 0) return base;
+  const recordMap = new Map(dbRecords.map((r) => [r.id, r]));
+  const merged = base.map((st) => {
+    const override = recordMap.get(st.id);
+    if (override) {
+      recordMap.delete(st.id);
+      return override;
+    }
+    return st;
+  });
+  return [...merged, ...recordMap.values()];
+}
 
 export default function App() {
   const [activeSection, setActiveSection] = useState<ActiveSection>('practice');
@@ -44,7 +66,8 @@ export default function App() {
   const [superadminReady, setSuperadminReady] = useState(false);
   const [studentPasswords, setStudentPasswords] = useState<StudentPasswordMap>({});
   const [session, setSession] = useState<AuthSession | null>(() => getInitialSession());
-  const [adminToken, setAdminToken] = useState<string | null>(null);
+  const [adminToken, setAdminToken] = useState<string | null>(() => getInitialAdminToken());
+  const [dbSyncError, setDbSyncError] = useState<string | null>(null);
   const [legacyImported, setLegacyImported] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [requestedBabId, setRequestedBabId] = useState<string | null>(null);
@@ -148,11 +171,24 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     const refresh = async () => {
-      try {
-        const activeAccounts = await loadStudentCredentialStatus();
-        if (!cancelled) setStudentPasswords(activeAccounts);
-      } catch (error) {
-        console.error(error);
+      const [accountsResult, dataResult] = await Promise.allSettled([
+        loadStudentCredentialStatus(),
+        loadStudentData(),
+      ]);
+      if (cancelled) return;
+      if (accountsResult.status === 'fulfilled') {
+        setStudentPasswords(accountsResult.value);
+      } else {
+        console.error(accountsResult.reason);
+      }
+      if (dataResult.status === 'fulfilled') {
+        const data = dataResult.value;
+        setAttempts(data.attempts);
+        setSetoranMap(data.setoranMap);
+        setStudents(mergeStudentRecords(INITIAL_STUDENTS, data.studentRecords));
+        setDbSyncError(null);
+      } else {
+        console.error(dataResult.reason);
       }
     };
     void refresh();
@@ -188,6 +224,18 @@ export default function App() {
       // ignore storage errors
     }
   }, [session]);
+
+  useEffect(() => {
+    try {
+      if (adminToken) {
+        localStorage.setItem(AUTH_STORAGE_KEYS.ADMIN_TOKEN, adminToken);
+      } else {
+        localStorage.removeItem(AUTH_STORAGE_KEYS.ADMIN_TOKEN);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [adminToken]);
 
   const isSuperadmin = session?.role === 'superadmin';
   const loggedInStudent =
@@ -339,27 +387,58 @@ export default function App() {
     });
     const entry: QuizAttempt = {
       ...newAttempt,
-      id: `att-${Date.now()}`,
+      id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       timestamp: formattedTime,
     };
     setAttempts((prev) => [entry, ...prev]);
+    void saveQuizAttemptToDb(entry).then((err) => {
+      if (err) {
+        console.error('Gagal menyimpan hasil ujian ke database:', err);
+        setDbSyncError(err);
+      } else {
+        setDbSyncError(null);
+      }
+    });
   };
 
-  const handleToggleSetoranBab = (studentId: string, babCode: string) => {
-    setSetoranMap((prev) => {
-      const existing = prev[studentId]?.completedBabs || [];
-      const updated = existing.includes(babCode)
-        ? existing.filter((b) => b !== babCode)
-        : [...existing, babCode];
-      return {
+  const handleToggleSetoranBab = async (studentId: string, babCode: string) => {
+    const previous = setoranMap[studentId];
+    const existing = previous?.completedBabs || [];
+    const updated = existing.includes(babCode)
+      ? existing.filter((b) => b !== babCode)
+      : [...existing, babCode];
+
+    setSetoranMap((prev) => ({
+      ...prev,
+      [studentId]: {
+        studentId,
+        completedBabs: updated,
+        lastUpdated: new Date().toISOString(),
+      },
+    }));
+
+    const { record, error } = await toggleSetoranInDb(studentId, babCode, adminToken);
+    if (error) {
+      setSetoranMap((prev) => {
+        const next = { ...prev };
+        if (previous) {
+          next[studentId] = previous;
+        } else {
+          delete next[studentId];
+        }
+        return next;
+      });
+      setDbSyncError(error);
+      window.alert(error);
+      return;
+    }
+    if (record) {
+      setDbSyncError(null);
+      setSetoranMap((prev) => ({
         ...prev,
-        [studentId]: {
-          studentId,
-          completedBabs: updated,
-          lastUpdated: new Date().toISOString(),
-        },
-      };
-    });
+        [studentId]: record,
+      }));
+    }
   };
 
   const handleStartPracticeForStudent = (student: Student) => {
@@ -383,22 +462,54 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleAddStudent = (newSt: Omit<Student, 'id'>) => {
+  const handleAddStudent = async (newSt: Omit<Student, 'id'>) => {
     const created: Student = {
       ...newSt,
-      id: `st-${Date.now()}`,
+      id: `st-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     };
     setStudents((prev) => [...prev, created]);
+    const error = await upsertStudentInDb(created, adminToken);
+    if (error) {
+      setStudents((prev) => prev.filter((s) => s.id !== created.id));
+      setDbSyncError(error);
+      window.alert(error);
+    } else {
+      setDbSyncError(null);
+    }
   };
 
-  const handleUpdateStudentGroup = (
+  const handleUpdateStudentGroup = async (
     studentId: string,
     kelas: StudentClass,
     gender: StudentGender
   ) => {
+    const previous = students.find((s) => s.id === studentId);
+    if (!previous) return;
+    const updatedStudent: Student = { ...previous, kelas, gender };
     setStudents((prev) =>
-      prev.map((s) => (s.id === studentId ? { ...s, kelas, gender } : s))
+      prev.map((s) => (s.id === studentId ? updatedStudent : s))
     );
+    const error = await upsertStudentInDb(updatedStudent, adminToken);
+    if (error) {
+      setStudents((prev) =>
+        prev.map((s) => (s.id === studentId ? previous : s))
+      );
+      setDbSyncError(error);
+      window.alert(error);
+    } else {
+      setDbSyncError(null);
+    }
+  };
+
+  const handleClearHistory = async () => {
+    const error = await clearAttemptsInDb(adminToken);
+    if (error) {
+      setDbSyncError(error);
+      window.alert(error);
+      return;
+    }
+    setDbSyncError(null);
+    setAttempts([]);
   };
 
   const handleRandomStudentQuickAction = () => {
@@ -556,6 +667,11 @@ export default function App() {
 
       {/* Main Content Container (1360px max width for 1440px desktop baseline) */}
       <main className="flex-1 max-w-[1360px] w-full mx-auto px-4 sm:px-6 py-8">
+        {dbSyncError && (
+          <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+            Sinkronisasi database terganggu: {dbSyncError}
+          </div>
+        )}
         {/* Page Header & 4-Cohort Quick Switcher Strip */}
         <section className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-6">
@@ -710,7 +826,7 @@ export default function App() {
             attempts={attempts}
             setoranMap={setoranMap}
             onJumpToCohortPractice={handleJumpToCohortPractice}
-            onClearHistory={() => setAttempts([])}
+            onClearHistory={handleClearHistory}
           />
         )}
 

@@ -25,6 +25,7 @@ export const AUTH_STORAGE_KEYS = {
   SESSION: 'albarkah_shorof_session_v1',
   STUDENT_PASSWORDS: 'albarkah_shorof_student_passwords_v1',
   SUPERADMIN: 'albarkah_shorof_superadmin_v1',
+  ADMIN_TOKEN: 'albarkah_shorof_admin_token_v1',
 };
 
 export const DEFAULT_SUPERADMIN_CREDENTIALS = {
@@ -88,4 +89,12 @@ export function getInitialSession(): AuthSession | null {
     // ignore
   }
   return null;
+}
+
+export function getInitialAdminToken(): string | null {
+  try {
+    return localStorage.getItem(AUTH_STORAGE_KEYS.ADMIN_TOKEN) || null;
+  } catch {
+    return null;
+  }
 }
