@@ -9,7 +9,6 @@ import {
   Play,
   RotateCcw,
   Search,
-  Volume2,
   XCircle,
 } from 'lucide-react';
 import {
@@ -25,7 +24,6 @@ import {
   QuizQuestion,
   generateBabExamQuestions,
   getExamQuestionCount,
-  speakArabic,
 } from '../utils/quizGenerator';
 import { BabScoreSummary, SECTION_NUMBERS, summarizeBabAttempts } from '../utils/babScores';
 
@@ -207,13 +205,10 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
 
   const answeredCount = Object.keys(answers).length;
 
-  const handleSelectAnswer = (questionIndex: number, optionId: string, arabicText: string) => {
+  const handleSelectAnswer = (questionIndex: number, optionId: string) => {
     if (submittedResult) return;
     setAnswers((prev) => ({ ...prev, [questionIndex]: optionId }));
     setSubmitWarning(null);
-    if (/[\u0600-\u06FF]/.test(arabicText)) {
-      speakArabic(arabicText);
-    }
   };
 
   const handleSubmitExam = () => {
@@ -600,14 +595,6 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                         {currentQuestion.arabicSubtext}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => speakArabic(currentQuestion.arabicHighlight)}
-                      title="Dengarkan pelafalan Arab"
-                      className="p-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-emerald-700 hover:border-emerald-300 transition-colors shrink-0"
-                    >
-                      <Volume2 className="w-5 h-5" />
-                    </button>
                   </div>
                 </div>
 
@@ -620,7 +607,7 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                         key={opt.id}
                         type="button"
                         onClick={() =>
-                          handleSelectAnswer(currentIdx, opt.id, opt.textAr)
+                          handleSelectAnswer(currentIdx, opt.id)
                         }
                         className={`p-4 rounded-xl border text-left transition-all flex items-center gap-3.5 ${
                           isSelected

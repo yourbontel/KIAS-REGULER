@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-  Volume2,
   RotateCcw,
   Shuffle,
   CheckCircle2,
@@ -168,10 +167,9 @@ export const PracticeSandbox: React.FC<PracticeSandboxProps> = ({
     startNewSession(selectedBabId, practiceMode, questionCount);
   };
 
-  const handleSelectOption = (optionId: string, arabicText: string) => {
+  const handleSelectOption = (optionId: string) => {
     if (selectedOptionId !== null) return;
     setSelectedOptionId(optionId);
-    speakArabic(arabicText);
     if (optionId === questions[currentIdx].correctOptionId) {
       setCorrectCount((prev) => prev + 1);
     }
@@ -204,6 +202,7 @@ export const PracticeSandbox: React.FC<PracticeSandboxProps> = ({
 
   // Sequence Builder Handlers
   const handleAddSeqWord = (key: string, textAr: string) => {
+    speakArabic(textAr);
     speakArabic(textAr);
     setSeqPlaced((prev) => [...prev, key]);
     setSeqPool((prev) => prev.filter((item) => item.key !== key));
@@ -501,14 +500,6 @@ export const PracticeSandbox: React.FC<PracticeSandboxProps> = ({
                     {currentQuestion.arabicSubtext}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => speakArabic(currentQuestion.arabicHighlight)}
-                  className="p-3 rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-emerald-700 hover:border-emerald-300 transition-colors shrink-0"
-                  title="Dengarkan pelafalan Arab"
-                >
-                  <Volume2 className="w-5 h-5" />
-                </button>
               </div>
             </div>
 
@@ -536,7 +527,7 @@ export const PracticeSandbox: React.FC<PracticeSandboxProps> = ({
                     key={option.id}
                     type="button"
                     disabled={showResult}
-                    onClick={() => handleSelectOption(option.id, option.textAr)}
+                    onClick={() => handleSelectOption(option.id)}
                     className={`group flex items-center justify-between gap-4 p-4 rounded-xl border text-left transition-colors ${buttonStyle}`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
