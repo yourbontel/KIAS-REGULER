@@ -1197,15 +1197,16 @@ function buildMujarrodSoundVerb(
   artiDasar: string,
   mashdar: string,
   options: {
+    madhiVowel?: 'َ' | 'ِ' | 'ُ';
     mudhariVowel: 'ُ' | 'ِ' | 'َ';
     amrHamzah: 'اُ' | 'اِ';
     makanVowel: 'َ' | 'ِ';
   }
 ): MauzunVerb {
   const [f, a, l] = rootLetters;
-  const { mudhariVowel, amrHamzah, makanVowel } = options;
+  const { madhiVowel = 'َ', mudhariVowel, amrHamzah, makanVowel } = options;
   const amrStem = `${amrHamzah}${f}ْ${a}${mudhariVowel}${l}`;
-  const lughawiMadhiStem = `${f}َ${a}َ${l}`;
+  const lughawiMadhiStem = `${f}َ${a}${madhiVowel}${l}`;
   const mudhariYa = `يَ${f}ْ${a}${mudhariVowel}${l}`;
   const mudhariTa = `تَ${f}ْ${a}${mudhariVowel}${l}`;
   const nunNiswahEnd = l === 'ن' ? 'َّ' : 'ْنَ';
@@ -1217,7 +1218,7 @@ function buildMujarrodSoundVerb(
     rootLetters,
     artiDasar,
     istilahi: {
-      madhi: `${f}َ${a}َ${l}َ`,
+      madhi: `${lughawiMadhiStem}َ`,
       mudhari: `${mudhariYa}ُ`,
       mashdar,
       isim_fail: `${f}َا${a}ِ${l}ٌ`,
@@ -1275,6 +1276,12 @@ function buildMujarrodSoundVerb(
 const BAB1_OPTS = { mudhariVowel: 'ُ' as const, amrHamzah: 'اُ' as const, makanVowel: 'َ' as const };
 const BAB2_OPTS = { mudhariVowel: 'ِ' as const, amrHamzah: 'اِ' as const, makanVowel: 'ِ' as const };
 const BAB3_OPTS = { mudhariVowel: 'َ' as const, amrHamzah: 'اِ' as const, makanVowel: 'َ' as const };
+const BAB4_OPTS = {
+  madhiVowel: 'ِ' as const,
+  mudhariVowel: 'ِ' as const,
+  amrHamzah: 'اِ' as const,
+  makanVowel: 'ِ' as const,
+};
 
 const R1_BAB1: ShorofBab = {
   ...SHOROF_BABS_REGULER_2[0],
@@ -1381,17 +1388,27 @@ const R1_BAB3: ShorofBab = {
   ],
 };
 
+const R1_BAB4: ShorofBab = {
+  ...SHOROF_BABS_REGULER_2[5],
+  id: 'r1-bab-4',
+  kode: 'Bab 4',
+  namaBab: 'Tsulatsi Mujarrod Bab 4 (Kasru-Kasrin)',
+  kategori: 'Tsulatsi Mujarrod',
+  questionsPerSection: 10,
+  sectionedExam: true,
+  mauzunList: [
+    buildMujarrodSoundVerb('naima', 'r1-bab-4', ['ن', 'ع', 'م'], 'Lembut', 'نَعِيمًا', BAB4_OPTS),
+    buildMujarrodSoundVerb('tafiha', 'r1-bab-4', ['ت', 'ف', 'ه'], 'Rendah', 'تَفَهًا', BAB4_OPTS),
+    buildMujarrodSoundVerb('r1-hasiba', 'r1-bab-4', ['ح', 'س', 'ب'], 'Menghitung', 'حُسْبَانًا', BAB4_OPTS),
+  ],
+};
+
 export const SHOROF_BABS_REGULER_1: ShorofBab[] = [
   // 6 Bab Tsulatsi Mujarrod
   R1_BAB1, // Bab 1: فَعَلَ - يَفْعُلُ (12 Mufradat, 60 soal)
   R1_BAB2, // Bab 2: فَعَلَ - يَفْعِلُ (12 Mufradat, 60 soal)
   R1_BAB3, // Bab 3: فَعَلَ - يَفْعَلُ (12 Mufradat, 60 soal)
-  cloneReguler2Bab('bab-6', {
-    id: 'r1-bab-4',
-    kode: 'Bab 4',
-    namaBab: 'Tsulatsi Mujarrod Bab 4 (Kasru-Kasrin)',
-    kategori: 'Tsulatsi Mujarrod',
-  }),
+  R1_BAB4, // Bab 4: فَعِلَ - يَفْعِلُ (3 Mufradat, 60 soal)
   cloneReguler2Bab('bab-4', {
     id: 'r1-bab-5',
     kode: 'Bab 5',
