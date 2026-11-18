@@ -1197,7 +1197,7 @@ function buildMujarrodSoundVerb(
   artiDasar: string,
   mashdar: string,
   options: {
-    mudhariVowel: 'ُ' | 'ِ';
+    mudhariVowel: 'ُ' | 'ِ' | 'َ';
     amrHamzah: 'اُ' | 'اِ';
     makanVowel: 'َ' | 'ِ';
   }
@@ -1208,6 +1208,8 @@ function buildMujarrodSoundVerb(
   const lughawiMadhiStem = `${f}َ${a}َ${l}`;
   const mudhariYa = `يَ${f}ْ${a}${mudhariVowel}${l}`;
   const mudhariTa = `تَ${f}ْ${a}${mudhariVowel}${l}`;
+  const nunNiswahEnd = l === 'ن' ? 'َّ' : 'ْنَ';
+  const nahnuMadhiEnd = l === 'ن' ? 'َّا' : 'ْنَا';
 
   return {
     id,
@@ -1233,7 +1235,7 @@ function buildMujarrodSoundVerb(
       `${lughawiMadhiStem}ُوا`,
       `${lughawiMadhiStem}َتْ`,
       `${lughawiMadhiStem}َتَا`,
-      `${lughawiMadhiStem}ْنَ`,
+      `${lughawiMadhiStem}${nunNiswahEnd}`,
       `${lughawiMadhiStem}ْتَ`,
       `${lughawiMadhiStem}ْتُمَا`,
       `${lughawiMadhiStem}ْتُمْ`,
@@ -1241,7 +1243,7 @@ function buildMujarrodSoundVerb(
       `${lughawiMadhiStem}ْتُمَا`,
       `${lughawiMadhiStem}ْتُنَّ`,
       `${lughawiMadhiStem}ْتُ`,
-      `${lughawiMadhiStem}ْنَا`,
+      `${lughawiMadhiStem}${nahnuMadhiEnd}`,
     ],
     lughawiMudhari: [
       `${mudhariYa}ُ`,
@@ -1249,13 +1251,13 @@ function buildMujarrodSoundVerb(
       `${mudhariYa}ُونَ`,
       `${mudhariTa}ُ`,
       `${mudhariTa}َانِ`,
-      `${mudhariYa}ْنَ`,
+      `${mudhariYa}${nunNiswahEnd}`,
       `${mudhariTa}ُ`,
       `${mudhariTa}َانِ`,
       `${mudhariTa}ُونَ`,
       `${mudhariTa}ِينَ`,
       `${mudhariTa}َانِ`,
-      `${mudhariTa}ْنَ`,
+      `${mudhariTa}${nunNiswahEnd}`,
       `أَ${f}ْ${a}${mudhariVowel}${l}ُ`,
       `نَ${f}ْ${a}${mudhariVowel}${l}ُ`,
     ],
@@ -1265,13 +1267,14 @@ function buildMujarrodSoundVerb(
       `${amrStem}ُوا`,
       `${amrStem}ِي`,
       `${amrStem}َا`,
-      `${amrStem}ْنَ`,
+      `${amrStem}${nunNiswahEnd}`,
     ],
   };
 }
 
 const BAB1_OPTS = { mudhariVowel: 'ُ' as const, amrHamzah: 'اُ' as const, makanVowel: 'َ' as const };
 const BAB2_OPTS = { mudhariVowel: 'ِ' as const, amrHamzah: 'اِ' as const, makanVowel: 'ِ' as const };
+const BAB3_OPTS = { mudhariVowel: 'َ' as const, amrHamzah: 'اِ' as const, makanVowel: 'َ' as const };
 
 const R1_BAB1: ShorofBab = {
   ...SHOROF_BABS_REGULER_2[0],
@@ -1321,11 +1324,68 @@ const R1_BAB2: ShorofBab = {
   ],
 };
 
+const R1_BAB3: ShorofBab = {
+  ...SHOROF_BABS_REGULER_2[2],
+  id: 'r1-bab-3',
+  kode: 'Bab 3',
+  namaBab: 'Tsulatsi Mujarrod Bab 3 (Fathu-Fathin)',
+  kategori: 'Tsulatsi Mujarrod',
+  questionsPerSection: 10,
+  sectionedExam: true,
+  mauzunList: [
+    buildMujarrodSoundVerb('r1-fataha', 'r1-bab-3', ['ف', 'ت', 'ح'], 'Membuka', 'فَتْحًا', BAB3_OPTS),
+    buildMujarrodSoundVerb('baatsa', 'r1-bab-3', ['ب', 'ع', 'ث'], 'Mengirim', 'بَعْثًا', BAB3_OPTS),
+    buildMujarrodSoundVerb('jaala', 'r1-bab-3', ['ج', 'ع', 'ل'], 'Menjadikan', 'جَعْلًا', BAB3_OPTS),
+    buildMujarrodSoundVerb('dafana', 'r1-bab-3', ['د', 'ف', 'ن'], 'Mengubur', 'دَفْنًا', BAB3_OPTS),
+    buildMujarrodSoundVerb('r1-dzahaba', 'r1-bab-3', ['ذ', 'ه', 'ب'], 'Pergi', 'ذَهَابًا', BAB3_OPTS),
+    buildMujarrodSoundVerb('rafaa', 'r1-bab-3', ['ر', 'ف', 'ع'], 'Mengangkat', 'رَفْعًا', BAB3_OPTS),
+    buildMujarrodSoundVerb('dzabaha', 'r1-bab-3', ['ذ', 'ب', 'ح'], 'Menyembelih', 'ذَبْحًا', BAB3_OPTS),
+    buildMujarrodSoundVerb('masaha', 'r1-bab-3', ['م', 'س', 'ح'], 'Menghapus', 'مَسْحًا', BAB3_OPTS),
+    buildMujarrodSoundVerb('jamaa', 'r1-bab-3', ['ج', 'م', 'ع'], 'Mengumpulkan', 'جَمْعًا', BAB3_OPTS),
+    buildMujarrodSoundVerb('nahara', 'r1-bab-3', ['ن', 'ح', 'ر'], 'Menyembelih', 'نَحْرًا', BAB3_OPTS),
+    buildMujarrodSoundVerb('manaa', 'r1-bab-3', ['م', 'ن', 'ع'], 'Mencegah', 'مَنْعًا', BAB3_OPTS),
+    {
+      id: 'qaraa',
+      babId: 'r1-bab-3',
+      rootLetters: ['ق', 'ر', 'أ'],
+      artiDasar: 'Membaca',
+      istilahi: {
+        madhi: 'قَرَأَ',
+        mudhari: 'يَقْرَأُ',
+        mashdar: 'قِرَاءَةً',
+        isim_fail: 'قَارِئٌ',
+        isim_maful: 'مَقْرُوءٌ',
+        fiil_amr: 'اِقْرَأْ',
+        fiil_nahyi: 'لَا تَقْرَأْ',
+        isim_zaman_makan: 'مَقْرَأٌ',
+        isim_alat: 'مِقْرَأٌ',
+        madhi_majhul: 'قُرِئَ',
+        mudhari_majhul: 'يُقْرَأُ',
+      },
+      lughawiMadhi: [
+        'قَرَأَ', 'قَرَأَا', 'قَرَءُوا',
+        'قَرَأَتْ', 'قَرَأَتَا', 'قَرَأْنَ',
+        'قَرَأْتَ', 'قَرَأْتُمَا', 'قَرَأْتُمْ',
+        'قَرَأْتِ', 'قَرَأْتُمَا', 'قَرَأْتُنَّ',
+        'قَرَأْتُ', 'قَرَأْنَا',
+      ],
+      lughawiMudhari: [
+        'يَقْرَأُ', 'يَقْرَآنِ', 'يَقْرَءُونَ',
+        'تَقْرَأُ', 'تَقْرَآنِ', 'يَقْرَأْنَ',
+        'تَقْرَأُ', 'تَقْرَآنِ', 'تَقْرَءُونَ',
+        'تَقْرَئِينَ', 'تَقْرَآنِ', 'تَقْرَأْنَ',
+        'أَقْرَأُ', 'نَقْرَأُ',
+      ],
+      lughawiAmr: ['اِقْرَأْ', 'اِقْرَآ', 'اِقْرَءُوا', 'اِقْرَئِي', 'اِقْرَآ', 'اِقْرَأْنَ'],
+    },
+  ],
+};
+
 export const SHOROF_BABS_REGULER_1: ShorofBab[] = [
   // 6 Bab Tsulatsi Mujarrod
   R1_BAB1, // Bab 1: فَعَلَ - يَفْعُلُ (12 Mufradat, 60 soal)
   R1_BAB2, // Bab 2: فَعَلَ - يَفْعِلُ (12 Mufradat, 60 soal)
-  SHOROF_BABS_REGULER_2[2], // Bab 3: فَعَلَ - يَفْعَلُ
+  R1_BAB3, // Bab 3: فَعَلَ - يَفْعَلُ (12 Mufradat, 60 soal)
   cloneReguler2Bab('bab-6', {
     id: 'r1-bab-4',
     kode: 'Bab 4',
