@@ -3,6 +3,7 @@ import {
   Award,
   BookOpenCheck,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -81,6 +82,7 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
     null
   );
   const [submitWarning, setSubmitWarning] = useState<string | null>(null);
+  const [openSectionDropdown, setOpenSectionDropdown] = useState<string | null>(null);
 
   const filteredGroupStudents = useMemo(() => {
     const q = studentSearch.trim().toLowerCase();
@@ -994,7 +996,50 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                      <div className="space-y-3">
+                        <button
+                          type="button"
+                          aria-expanded={openSectionDropdown === bab.id}
+                          onClick={() =>
+                            setOpenSectionDropdown((prev) =>
+                              prev === bab.id ? null : bab.id
+                            )
+                          }
+                          className={`w-full flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl border text-left transition-all ${
+                            openSectionDropdown === bab.id
+                              ? 'bg-white border-emerald-600 ring-2 ring-emerald-500/15'
+                              : 'bg-[#F8FAFC] border-slate-200 hover:border-slate-300 hover:bg-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0">
+                              <BookOpenCheck className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold text-slate-900">
+                                Daftar Bagian 1–6
+                              </div>
+                              <div className="text-[11px] text-slate-500">
+                                Buka untuk memilih Bagian yang ingin dikerjakan
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full tabular-nums">
+                              {stat.completedSections}/{stat.totalSections} Bagian selesai
+                            </span>
+                            <ChevronDown
+                              className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${
+                                openSectionDropdown === bab.id
+                                  ? 'rotate-180 text-emerald-700'
+                                  : ''
+                              }`}
+                            />
+                          </div>
+                        </button>
+
+                        {openSectionDropdown === bab.id && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {SECTION_NUMBERS.map((sectionNo) => {
                           const sectionMeta = EXAM_SECTIONS.find((s) => s.number === sectionNo);
                           const best = stat.sectionBest[sectionNo];
@@ -1059,6 +1104,8 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                             </div>
                           );
                         })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
