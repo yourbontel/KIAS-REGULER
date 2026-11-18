@@ -1190,18 +1190,24 @@ const MAZID2_BAB4: ShorofBab = {
   ],
 };
 
-function buildBab1MauzunVerb(
+function buildMujarrodSoundVerb(
   id: string,
   babId: string,
   rootLetters: [string, string, string],
   artiDasar: string,
-  mashdar: string
+  mashdar: string,
+  options: {
+    mudhariVowel: 'ُ' | 'ِ';
+    amrHamzah: 'اُ' | 'اِ';
+    makanVowel: 'َ' | 'ِ';
+  }
 ): MauzunVerb {
   const [f, a, l] = rootLetters;
-  const amrStem = `اُ${f}ْ${a}ُ${l}`;
+  const { mudhariVowel, amrHamzah, makanVowel } = options;
+  const amrStem = `${amrHamzah}${f}ْ${a}${mudhariVowel}${l}`;
   const lughawiMadhiStem = `${f}َ${a}َ${l}`;
-  const mudhariYa = `يَ${f}ْ${a}ُ${l}`;
-  const mudhariTa = `تَ${f}ْ${a}ُ${l}`;
+  const mudhariYa = `يَ${f}ْ${a}${mudhariVowel}${l}`;
+  const mudhariTa = `تَ${f}ْ${a}${mudhariVowel}${l}`;
 
   return {
     id,
@@ -1215,8 +1221,8 @@ function buildBab1MauzunVerb(
       isim_fail: `${f}َا${a}ِ${l}ٌ`,
       isim_maful: `مَ${f}ْ${a}ُو${l}ٌ`,
       fiil_amr: `${amrStem}ْ`,
-      fiil_nahyi: `لَا تَ${f}ْ${a}ُ${l}ْ`,
-      isim_zaman_makan: `مَ${f}ْ${a}َ${l}ٌ`,
+      fiil_nahyi: `لَا تَ${f}ْ${a}${mudhariVowel}${l}ْ`,
+      isim_zaman_makan: `مَ${f}ْ${a}${makanVowel}${l}ٌ`,
       isim_alat: `مِ${f}ْ${a}َ${l}ٌ`,
       madhi_majhul: `${f}ُ${a}ِ${l}َ`,
       mudhari_majhul: `يُ${f}ْ${a}َ${l}ُ`,
@@ -1250,8 +1256,8 @@ function buildBab1MauzunVerb(
       `${mudhariTa}ِينَ`,
       `${mudhariTa}َانِ`,
       `${mudhariTa}ْنَ`,
-      `أَ${f}ْ${a}ُ${l}ُ`,
-      `نَ${f}ْ${a}ُ${l}ُ`,
+      `أَ${f}ْ${a}${mudhariVowel}${l}ُ`,
+      `نَ${f}ْ${a}${mudhariVowel}${l}ُ`,
     ],
     lughawiAmr: [
       `${amrStem}ْ`,
@@ -1264,6 +1270,9 @@ function buildBab1MauzunVerb(
   };
 }
 
+const BAB1_OPTS = { mudhariVowel: 'ُ' as const, amrHamzah: 'اُ' as const, makanVowel: 'َ' as const };
+const BAB2_OPTS = { mudhariVowel: 'ِ' as const, amrHamzah: 'اِ' as const, makanVowel: 'ِ' as const };
+
 const R1_BAB1: ShorofBab = {
   ...SHOROF_BABS_REGULER_2[0],
   id: 'r1-bab-1',
@@ -1273,25 +1282,49 @@ const R1_BAB1: ShorofBab = {
   questionsPerSection: 10,
   sectionedExam: true,
   mauzunList: [
-    buildBab1MauzunVerb('kafara', 'r1-bab-1', ['ك', 'ف', 'ر'], 'Mengingkari', 'كُفْرًا'),
-    buildBab1MauzunVerb('qatala', 'r1-bab-1', ['ق', 'ت', 'ل'], 'Membunuh', 'قَتْلًا'),
-    buildBab1MauzunVerb('satara', 'r1-bab-1', ['س', 'ت', 'ر'], 'Menutupi', 'سَتْرًا'),
-    buildBab1MauzunVerb('khalaqa', 'r1-bab-1', ['خ', 'ل', 'ق'], 'Menciptakan', 'خَلْقًا'),
-    buildBab1MauzunVerb('r1-nasara', 'r1-bab-1', ['ن', 'ص', 'ر'], 'Menolong', 'نَصْرًا'),
-    buildBab1MauzunVerb('kharaja', 'r1-bab-1', ['خ', 'ر', 'ج'], 'Keluar', 'خُرُوجًا'),
-    buildBab1MauzunVerb('r1-dakhala', 'r1-bab-1', ['د', 'خ', 'ل'], 'Masuk', 'دُخُولًا'),
-    buildBab1MauzunVerb('kanasa', 'r1-bab-1', ['ك', 'ن', 'س'], 'Menyapu', 'كَنْسًا'),
-    buildBab1MauzunVerb('razaqa', 'r1-bab-1', ['ر', 'ز', 'ق'], 'Memberi rezeki', 'رِزْقًا'),
-    buildBab1MauzunVerb('r1-kataba', 'r1-bab-1', ['ك', 'ت', 'ب'], 'Menulis', 'كِتَابَةً'),
-    buildBab1MauzunVerb('raqada', 'r1-bab-1', ['ر', 'ق', 'د'], 'Tidur', 'رُقُودًا'),
-    buildBab1MauzunVerb('darasa', 'r1-bab-1', ['د', 'ر', 'س'], 'Belajar', 'دَرْسًا'),
+    buildMujarrodSoundVerb('kafara', 'r1-bab-1', ['ك', 'ف', 'ر'], 'Mengingkari', 'كُفْرًا', BAB1_OPTS),
+    buildMujarrodSoundVerb('qatala', 'r1-bab-1', ['ق', 'ت', 'ل'], 'Membunuh', 'قَتْلًا', BAB1_OPTS),
+    buildMujarrodSoundVerb('satara', 'r1-bab-1', ['س', 'ت', 'ر'], 'Menutupi', 'سَتْرًا', BAB1_OPTS),
+    buildMujarrodSoundVerb('khalaqa', 'r1-bab-1', ['خ', 'ل', 'ق'], 'Menciptakan', 'خَلْقًا', BAB1_OPTS),
+    buildMujarrodSoundVerb('r1-nasara', 'r1-bab-1', ['ن', 'ص', 'ر'], 'Menolong', 'نَصْرًا', BAB1_OPTS),
+    buildMujarrodSoundVerb('kharaja', 'r1-bab-1', ['خ', 'ر', 'ج'], 'Keluar', 'خُرُوجًا', BAB1_OPTS),
+    buildMujarrodSoundVerb('r1-dakhala', 'r1-bab-1', ['د', 'خ', 'ل'], 'Masuk', 'دُخُولًا', BAB1_OPTS),
+    buildMujarrodSoundVerb('kanasa', 'r1-bab-1', ['ك', 'ن', 'س'], 'Menyapu', 'كَنْسًا', BAB1_OPTS),
+    buildMujarrodSoundVerb('razaqa', 'r1-bab-1', ['ر', 'ز', 'ق'], 'Memberi rezeki', 'رِزْقًا', BAB1_OPTS),
+    buildMujarrodSoundVerb('r1-kataba', 'r1-bab-1', ['ك', 'ت', 'ب'], 'Menulis', 'كِتَابَةً', BAB1_OPTS),
+    buildMujarrodSoundVerb('raqada', 'r1-bab-1', ['ر', 'ق', 'د'], 'Tidur', 'رُقُودًا', BAB1_OPTS),
+    buildMujarrodSoundVerb('darasa', 'r1-bab-1', ['د', 'ر', 'س'], 'Belajar', 'دَرْسًا', BAB1_OPTS),
+  ],
+};
+
+const R1_BAB2: ShorofBab = {
+  ...SHOROF_BABS_REGULER_2[1],
+  id: 'r1-bab-2',
+  kode: 'Bab 2',
+  namaBab: 'Tsulatsi Mujarrod Bab 2 (Fathu-Kasrin)',
+  kategori: 'Tsulatsi Mujarrod',
+  questionsPerSection: 10,
+  sectionedExam: true,
+  mauzunList: [
+    buildMujarrodSoundVerb('ghalaba', 'r1-bab-2', ['غ', 'ل', 'ب'], 'Mengalahkan', 'غَلَبًا', BAB2_OPTS),
+    buildMujarrodSoundVerb('ghafara', 'r1-bab-2', ['غ', 'ف', 'ر'], 'Mengampuni', 'غَفْرًا', BAB2_OPTS),
+    buildMujarrodSoundVerb('rajaa', 'r1-bab-2', ['ر', 'ج', 'ع'], 'Kembali', 'رُجُوعًا', BAB2_OPTS),
+    buildMujarrodSoundVerb('shabara', 'r1-bab-2', ['ص', 'ب', 'ر'], 'Sabar', 'صَبْرًا', BAB2_OPTS),
+    buildMujarrodSoundVerb('r1-dharaba', 'r1-bab-2', ['ض', 'ر', 'ب'], 'Memukul', 'ضَرْبًا', BAB2_OPTS),
+    buildMujarrodSoundVerb('qathafa', 'r1-bab-2', ['ق', 'ط', 'ف'], 'Memetik', 'قَطْفًا', BAB2_OPTS),
+    buildMujarrodSoundVerb('r1-jalasa', 'r1-bab-2', ['ج', 'ل', 'س'], 'Duduk', 'جُلُوسًا', BAB2_OPTS),
+    buildMujarrodSoundVerb('hamala', 'r1-bab-2', ['ح', 'م', 'ل'], 'Membawa', 'حَمْلًا', BAB2_OPTS),
+    buildMujarrodSoundVerb('fashala', 'r1-bab-2', ['ف', 'ص', 'ل'], 'Memisahkan', 'فَصْلًا', BAB2_OPTS),
+    buildMujarrodSoundVerb('kasaba', 'r1-bab-2', ['ك', 'س', 'ب'], 'Melakukan', 'كَسْبًا', BAB2_OPTS),
+    buildMujarrodSoundVerb('r1-ghasala', 'r1-bab-2', ['غ', 'س', 'ل'], 'Mencuci', 'غَسْلًا', BAB2_OPTS),
+    buildMujarrodSoundVerb('hadzafa', 'r1-bab-2', ['ح', 'ذ', 'ف'], 'Menghapus', 'حَذْفًا', BAB2_OPTS),
   ],
 };
 
 export const SHOROF_BABS_REGULER_1: ShorofBab[] = [
   // 6 Bab Tsulatsi Mujarrod
   R1_BAB1, // Bab 1: فَعَلَ - يَفْعُلُ (12 Mufradat, 60 soal)
-  SHOROF_BABS_REGULER_2[1], // Bab 2: فَعَلَ - يَفْعِلُ
+  R1_BAB2, // Bab 2: فَعَلَ - يَفْعِلُ (12 Mufradat, 60 soal)
   SHOROF_BABS_REGULER_2[2], // Bab 3: فَعَلَ - يَفْعَلُ
   cloneReguler2Bab('bab-6', {
     id: 'r1-bab-4',
