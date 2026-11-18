@@ -7,46 +7,153 @@ import {
 } from '../data/shorofData';
 import { CURATED_EXAM_QUESTIONS } from '../data/babExamBank';
 
-export type ExamSectionNumber = 1 | 2 | 3 | 4 | 5 | 6;
+export type ExamSectionNumber =
+  | 1
+  | 2
+  | 3
+  | 4
+  | 5
+  | 6
+  | 7
+  | 8
+  | 9
+  | 10
+  | 11
+  | 12;
+
+export type TashrifType = 'istilahi' | 'lughawi';
 
 export interface ExamSectionMeta {
   number: ExamSectionNumber;
+  /** Jenis tashrif: istilahi (perubahan shighat) atau lughawi (perubahan dhamir) */
+  tashrifType: TashrifType;
+  /** Nomor bagian lokal 1-6 di dalam jenisnya */
+  localNumber: number;
+  /** Nama kelompok untuk ditampilkan di UI */
+  groupName: string;
   shortLabel: string;
   title: string;
 }
 
+/**
+ * 12 Bagian Ujian Per Bab:
+ * - Tashrif Istilahi (Bagian 1-6): perubahan shighat (madhi, mudhari, mashdar, dst.)
+ * - Tashrif Lughawi (Bagian 1-6): perubahan dhamir (14 dhamir & 6 dhamir amr)
+ */
 export const EXAM_SECTIONS: ExamSectionMeta[] = [
+  // ===================== TASHRIF ISTILAHI (Bagian 1-6) =====================
   {
     number: 1,
-    shortLabel: 'Bagian 1',
+    tashrifType: 'istilahi',
+    localNumber: 1,
+    groupName: 'Tashrif Istilahi',
+    shortLabel: 'Istilahi · Bagian 1',
     title: 'Bagian 1: Transformasi Langsung (Tanpa Urutan)',
   },
   {
     number: 2,
-    shortLabel: 'Bagian 2',
+    tashrifType: 'istilahi',
+    localNumber: 2,
+    groupName: 'Tashrif Istilahi',
+    shortLabel: 'Istilahi · Bagian 2',
     title: 'Bagian 2: Identifikasi Shighat dan Akar Kata (Reverse Tasrif)',
   },
   {
     number: 3,
-    shortLabel: 'Bagian 3',
-    title: 'Bagian 3: Melengkapi Deret Tasrif yang Rumpang',
+    tashrifType: 'istilahi',
+    localNumber: 3,
+    groupName: 'Tashrif Istilahi',
+    shortLabel: 'Istilahi · Bagian 3',
+    title: 'Bagian 3: Melengkapi Deret Tashrif yang Rumpang',
   },
   {
     number: 4,
-    shortLabel: 'Bagian 4',
+    tashrifType: 'istilahi',
+    localNumber: 4,
+    groupName: 'Tashrif Istilahi',
+    shortLabel: 'Istilahi · Bagian 4',
     title: 'Bagian 4: Penerapan Shighat dalam Kalimat Kontekstual',
   },
   {
     number: 5,
-    shortLabel: 'Bagian 5',
+    tashrifType: 'istilahi',
+    localNumber: 5,
+    groupName: 'Tashrif Istilahi',
+    shortLabel: 'Istilahi · Bagian 5',
     title: 'Bagian 5: Koreksi Kesalahan Pola (Analisis Wazan & Idgham)',
   },
   {
     number: 6,
-    shortLabel: 'Bagian 6',
+    tashrifType: 'istilahi',
+    localNumber: 6,
+    groupName: 'Tashrif Istilahi',
+    shortLabel: 'Istilahi · Bagian 6',
     title: 'Bagian 6: Ekstraksi dari Kalimat Sehari-hari',
   },
+  // ====================== TASHRIF LUGHAWI (Bagian 1-6) =====================
+  {
+    number: 7,
+    tashrifType: 'lughawi',
+    localNumber: 1,
+    groupName: 'Tashrif Lughawi',
+    shortLabel: 'Lughawi · Bagian 1',
+    title: "Bagian 1: Transformasi Langsung Tashrif Lughawi (Fi'il Madhi)",
+  },
+  {
+    number: 8,
+    tashrifType: 'lughawi',
+    localNumber: 2,
+    groupName: 'Tashrif Lughawi',
+    shortLabel: 'Lughawi · Bagian 2',
+    title: 'Bagian 2: Identifikasi Dhamir & Shighat (Reverse Tashrif Lughawi)',
+  },
+  {
+    number: 9,
+    tashrifType: 'lughawi',
+    localNumber: 3,
+    groupName: 'Tashrif Lughawi',
+    shortLabel: 'Lughawi · Bagian 3',
+    title: "Bagian 3: Melengkapi Deret Tashrif Lughawi Fi'il Madhi",
+  },
+  {
+    number: 10,
+    tashrifType: 'lughawi',
+    localNumber: 4,
+    groupName: 'Tashrif Lughawi',
+    shortLabel: 'Lughawi · Bagian 4',
+    title: "Bagian 4: Transformasi Langsung Tashrif Lughawi (Fi'il Mudhari')",
+  },
+  {
+    number: 11,
+    tashrifType: 'lughawi',
+    localNumber: 5,
+    groupName: 'Tashrif Lughawi',
+    shortLabel: 'Lughawi · Bagian 5',
+    title: "Bagian 5: Melengkapi Deret Tashrif Lughawi Fi'il Mudhari'",
+  },
+  {
+    number: 12,
+    tashrifType: 'lughawi',
+    localNumber: 6,
+    groupName: 'Tashrif Lughawi',
+    shortLabel: 'Lughawi · Bagian 6',
+    title: "Bagian 6: Transformasi Tashrif Lughawi Fi'il Amr (6 Dhamir)",
+  },
 ];
+
+export const ISTILAHI_SECTIONS: ExamSectionMeta[] = EXAM_SECTIONS.filter(
+  (s) => s.tashrifType === 'istilahi'
+);
+
+export const LUGHAWI_SECTIONS: ExamSectionMeta[] = EXAM_SECTIONS.filter(
+  (s) => s.tashrifType === 'lughawi'
+);
+
+export function getSectionMeta(
+  number: number
+): ExamSectionMeta | undefined {
+  return EXAM_SECTIONS.find((s) => s.number === number);
+}
 
 export interface QuizQuestion {
   id: string;
@@ -65,6 +172,15 @@ export interface QuizQuestion {
   correctOptionId: string;
   explanation: string;
 }
+
+/** Dhamir raf' mutaharrik yang dipakai pada Fi'il Amr (Anta s.d. Antunna) */
+const AMR_DHAMIR_INDICES = [6, 7, 8, 9, 10, 11];
+/** Jendela 4 dhamir berurutan untuk deret lughawi rumpang */
+const LUGHAWI_SEQUENCE_WINDOWS = [
+  [0, 1, 2, 3],
+  [6, 7, 8, 9],
+  [10, 11, 12, 13],
+];
 
 function shuffleArray<T>(arr: T[]): T[] {
   const copy = [...arr];
@@ -109,9 +225,13 @@ export function speakArabic(text: string) {
   }
 }
 
-function getSectionTitle(num: ExamSectionNumber): string {
-  return EXAM_SECTIONS.find((s) => s.number === num)?.title || `Bagian ${num}`;
+function getSectionTitle(num: number): string {
+  return getSectionMeta(num)?.title || `Bagian ${num}`;
 }
+
+// ===========================================================================
+// TASHRIF ISTILAHI (Bagian 1-6)
+// ===========================================================================
 
 function buildSection1Questions(bab: ShorofBab, count: number): QuizQuestion[] {
   const targetKeys: (keyof MauzunVerb['istilahi'])[] = [
@@ -135,11 +255,9 @@ function buildSection1Questions(bab: ShorofBab, count: number): QuizQuestion[] {
 
       const distractorPool = Array.from(
         new Set(
-          [
-            ...Object.values(verb.istilahi),
-            ...verb.lughawiMadhi.slice(1, 5),
-            ...verb.lughawiMudhari.slice(1, 5),
-          ].filter((w) => w && !w.startsWith('—') && w !== answer)
+          Object.values(verb.istilahi).filter(
+            (w) => w && !w.startsWith('—') && w !== answer
+          )
         )
       );
 
@@ -164,36 +282,6 @@ function buildSection1Questions(bab: ShorofBab, count: number): QuizQuestion[] {
         ]),
         correctOptionId: 'correct',
         explanation: `Transformasi langsung dari ${verb.istilahi.madhi} ke ${targetMeta.labelId} mengikuti wazan ${bab.wazanIstilahi[tKey]} → ${answer}.`,
-      });
-    });
-
-    // Also include direct dhamir transformation
-    [2, 5, 8, 13].forEach((dIdx) => {
-      const dhamir = DHAMIR_14[dIdx];
-      const answer = verb.lughawiMudhari[dIdx];
-      const distractors = shuffleArray(
-        Array.from(new Set(verb.lughawiMudhari.filter((v) => v !== answer)))
-      ).slice(0, 3);
-      if (distractors.length < 3) return;
-
-      pool.push({
-        id: `s1-lug-${verb.id}-${dIdx}`,
-        babId: bab.id,
-        babKode: `${bab.kode} (${bab.wazanAr})`,
-        sectionNumber: 1,
-        sectionTitle: getSectionTitle(1),
-        promptId: `Ubah langsung Fi'il Mudhari' "${verb.istilahi.mudhari}" untuk dhamir ${dhamir.dhamirLatin} (${dhamir.artiId}):`,
-        arabicHighlight: `${verb.istilahi.mudhari}  ←  ${dhamir.dhamirAr}`,
-        arabicSubtext: `Target: ${dhamir.kategori}`,
-        options: shuffleArray([
-          { id: 'correct', textAr: answer },
-          ...distractors.map((val, idx) => ({
-            id: `wrong-${idx}`,
-            textAr: val,
-          })),
-        ]),
-        correctOptionId: 'correct',
-        explanation: `Bentuk Fi'il Mudhari' langsung untuk dhamir ${dhamir.dhamirAr} (${dhamir.artiId}) dari ${verb.istilahi.mudhari} adalah ${answer}.`,
       });
     });
 
@@ -291,7 +379,7 @@ function buildSection3Questions(bab: ShorofBab, count: number): QuizQuestion[] {
 
   const perVerbPools: QuizQuestion[][] = bab.mauzunList.map((verb) => {
     const pool: QuizQuestion[] = [];
-    // 1. Deret Tashrif Istilahi Rumpang (4 slot windows)
+    // Deret Tashrif Istilahi Rumpang (4 slot windows)
     for (let start = 0; start <= istilahiOrder.length - 4; start++) {
       const sliceKeys = istilahiOrder.slice(start, start + 4);
       const hasMissingPlaceholder = sliceKeys.some((k) =>
@@ -311,10 +399,9 @@ function buildSection3Questions(bab: ShorofBab, count: number): QuizQuestion[] {
       const distractors = shuffleArray(
         Array.from(
           new Set(
-            [
-              ...Object.values(verb.istilahi),
-              ...verb.lughawiMadhi.slice(1, 4),
-            ].filter((w) => w && !w.startsWith('—') && w !== answer)
+            Object.values(verb.istilahi).filter(
+              (w) => w && !w.startsWith('—') && w !== answer
+            )
           )
         )
       ).slice(0, 3);
@@ -341,50 +428,6 @@ function buildSection3Questions(bab: ShorofBab, count: number): QuizQuestion[] {
         explanation: `Pada urutan Tashrif Istilahi tersebut, bagian yang rumpang adalah ${gapMeta.labelId} yaitu ${answer}.`,
       });
     }
-
-    // 2. Deret Tashrif Lughawi Rumpang (4 dhamir berurutan)
-    [
-      [0, 1, 2, 3],
-      [6, 7, 8, 9],
-      [10, 11, 12, 13],
-    ].forEach((indices, windowIdx) => {
-      const gapPos = 2;
-      const targetDhamirIdx = indices[gapPos];
-      const answer = verb.lughawiMadhi[targetDhamirIdx];
-      const targetDhamir = DHAMIR_14[targetDhamirIdx];
-
-      const sequenceDisplay = indices
-        .map((dIdx, idx) =>
-          idx === gapPos ? '[ ... ]' : verb.lughawiMadhi[dIdx]
-        )
-        .join('  —  ');
-
-      const distractors = shuffleArray(
-        Array.from(new Set(verb.lughawiMadhi.filter((v) => v !== answer)))
-      ).slice(0, 3);
-
-      if (distractors.length < 3) return;
-
-      pool.push({
-        id: `s3-lug-${verb.id}-${windowIdx}`,
-        babId: bab.id,
-        babKode: `${bab.kode} (${bab.wazanAr})`,
-        sectionNumber: 3,
-        sectionTitle: getSectionTitle(3),
-        promptId: `Lengkapi deret Tashrif Lughawi Fi'il Madhi yang rumpang berikut (dhamir ${targetDhamir.dhamirLatin}):`,
-        arabicHighlight: sequenceDisplay,
-        arabicSubtext: `Urutan dhamir: ${indices.map((i) => DHAMIR_14[i].dhamirLatin).join(' → ')}`,
-        options: shuffleArray([
-          { id: 'correct', textAr: answer, textSub: targetDhamir.dhamirAr },
-          ...distractors.map((val, idx) => ({
-            id: `wrong-${idx}`,
-            textAr: val,
-          })),
-        ]),
-        correctOptionId: 'correct',
-        explanation: `Urutan dhamir ${targetDhamir.dhamirAr} (${targetDhamir.artiId}) dalam deret tersebut adalah ${answer}.`,
-      });
-    });
 
     return pool;
   });
@@ -419,27 +462,257 @@ function buildCuratedSectionQuestions(
   }));
 }
 
+// ===========================================================================
+// TASHRIF LUGHAWI (Bagian 7-12)
+// ===========================================================================
+
+function buildLughawiTransformQuestions(
+  bab: ShorofBab,
+  count: number,
+  tense: 'madhi' | 'mudhari'
+): QuizQuestion[] {
+  const sectionNumber: ExamSectionNumber = tense === 'madhi' ? 7 : 10;
+  const formsKey = tense === 'madhi' ? 'lughawiMadhi' : 'lughawiMudhari';
+  const tenseLabel = tense === 'madhi' ? "Fi'il Madhi" : "Fi'il Mudhari'";
+
+  const perVerbPools: QuizQuestion[][] = bab.mauzunList.map((verb) => {
+    const pool: QuizQuestion[] = [];
+    const forms = verb[formsKey];
+
+    DHAMIR_14.forEach((dhamir, dIdx) => {
+      const answer = forms[dIdx];
+      if (!answer || answer.startsWith('—')) return;
+
+      const distractors = shuffleArray(
+        Array.from(new Set(forms.filter((v) => v && !v.startsWith('—') && v !== answer)))
+      ).slice(0, 3);
+      if (distractors.length < 3) return;
+
+      pool.push({
+        id: `s${sectionNumber}-${verb.id}-${dIdx}`,
+        babId: bab.id,
+        babKode: `${bab.kode} (${bab.wazanAr})`,
+        sectionNumber,
+        sectionTitle: getSectionTitle(sectionNumber),
+        promptId: `Ubah ${tenseLabel} lughawi dari "${verb.istilahi[tense]}" (${verb.artiDasar}) untuk dhamir ${dhamir.dhamirLatin} (${dhamir.artiId}):`,
+        arabicHighlight: `${verb.istilahi[tense]}  ←  ${dhamir.dhamirAr}`,
+        arabicSubtext: `Target: ${dhamir.kategori} · ${bab.kode}`,
+        options: shuffleArray([
+          { id: 'correct', textAr: answer, textSub: dhamir.dhamirAr },
+          ...distractors.map((val, idx) => ({
+            id: `wrong-${idx}`,
+            textAr: val,
+          })),
+        ]),
+        correctOptionId: 'correct',
+        explanation: `Bentuk ${tenseLabel} lughawi untuk dhamir ${dhamir.dhamirAr} (${dhamir.artiId}) dari ${verb.istilahi[tense]} adalah ${answer}.`,
+      });
+    });
+
+    return pool;
+  });
+
+  return pickBalancedFromPools(perVerbPools, count);
+}
+
+function buildLughawiReverseQuestions(
+  bab: ShorofBab,
+  count: number
+): QuizQuestion[] {
+  const sectionNumber: ExamSectionNumber = 8;
+
+  const perVerbPools: QuizQuestion[][] = bab.mauzunList.map((verb) => {
+    const pool: QuizQuestion[] = [];
+    const rootStr = verb.rootLetters.join(' - ');
+
+    (['madhi', 'mudhari'] as const).forEach((tense) => {
+      const forms = tense === 'madhi' ? verb.lughawiMadhi : verb.lughawiMudhari;
+      const tenseLabel = tense === 'madhi' ? "Fi'il Madhi" : "Fi'il Mudhari'";
+
+      DHAMIR_14.forEach((dhamir, dIdx) => {
+        const form = forms[dIdx];
+        if (!form || form.startsWith('—')) return;
+        // Lewati bentuk yang sama dipakai lebih dari satu dhamir (ambigu)
+        if (forms.filter((v) => v === form).length > 1) return;
+
+        // Pilih distraktor dengan dhamirAr unik agar opsi tidak duplikat
+        const seen = new Set<string>([dhamir.dhamirAr]);
+        const distractors = shuffleArray(DHAMIR_14)
+          .filter((d) => {
+            if (d.id === dhamir.id || seen.has(d.dhamirAr)) return false;
+            seen.add(d.dhamirAr);
+            return true;
+          })
+          .slice(0, 3);
+        if (distractors.length < 3) return;
+
+        pool.push({
+          id: `s8-${verb.id}-${tense}-${dIdx}`,
+          babId: bab.id,
+          babKode: `${bab.kode} (${bab.wazanAr})`,
+          sectionNumber,
+          sectionTitle: getSectionTitle(sectionNumber),
+          promptId: `Lafaz berikut adalah bentuk ${tenseLabel} lughawi dari akar "${rootStr}" (${verb.artiDasar}). Tentukan dhamir-nya:`,
+          arabicHighlight: form,
+          arabicSubtext: `Pola lughawi ${tenseLabel} · ${bab.kode}`,
+          options: shuffleArray([
+            { id: 'correct', textAr: dhamir.dhamirAr, textSub: dhamir.kategori },
+            ...distractors.map((d, idx) => ({
+              id: `wrong-${idx}`,
+              textAr: d.dhamirAr,
+              textSub: d.kategori,
+            })),
+          ]),
+          correctOptionId: 'correct',
+          explanation: `Lafaz ${form} adalah ${tenseLabel} lughawi untuk dhamir ${dhamir.dhamirAr} (${dhamir.artiId}).`,
+        });
+      });
+    });
+
+    return pool;
+  });
+
+  return pickBalancedFromPools(perVerbPools, count);
+}
+
+function buildLughawiSequenceQuestions(
+  bab: ShorofBab,
+  count: number,
+  tense: 'madhi' | 'mudhari'
+): QuizQuestion[] {
+  const sectionNumber: ExamSectionNumber = tense === 'madhi' ? 9 : 11;
+  const formsKey = tense === 'madhi' ? 'lughawiMadhi' : 'lughawiMudhari';
+  const tenseLabel = tense === 'madhi' ? "Fi'il Madhi" : "Fi'il Mudhari'";
+
+  const perVerbPools: QuizQuestion[][] = bab.mauzunList.map((verb) => {
+    const forms = verb[formsKey];
+    const pool: QuizQuestion[] = [];
+    const gapPos = 2;
+
+    LUGHAWI_SEQUENCE_WINDOWS.forEach((indices, windowIdx) => {
+      const targetDhamirIdx = indices[gapPos];
+      const answer = forms[targetDhamirIdx];
+      const targetDhamir = DHAMIR_14[targetDhamirIdx];
+      if (!answer || answer.startsWith('—')) return;
+
+      const sequenceDisplay = indices
+        .map((dIdx, idx) => (idx === gapPos ? '[ ... ]' : forms[dIdx]))
+        .join('  —  ');
+
+      const distractors = shuffleArray(
+        Array.from(new Set(forms.filter((v) => v && !v.startsWith('—') && v !== answer)))
+      ).slice(0, 3);
+
+      if (distractors.length < 3) return;
+
+      pool.push({
+        id: `s${sectionNumber}-${verb.id}-${windowIdx}`,
+        babId: bab.id,
+        babKode: `${bab.kode} (${bab.wazanAr})`,
+        sectionNumber,
+        sectionTitle: getSectionTitle(sectionNumber),
+        promptId: `Lengkapi deret Tashrif Lughawi ${tenseLabel} yang rumpang berikut (dhamir ${targetDhamir.dhamirLatin}):`,
+        arabicHighlight: sequenceDisplay,
+        arabicSubtext: `Urutan dhamir: ${indices.map((i) => DHAMIR_14[i].dhamirLatin).join(' → ')}`,
+        options: shuffleArray([
+          { id: 'correct', textAr: answer, textSub: targetDhamir.dhamirAr },
+          ...distractors.map((val, idx) => ({
+            id: `wrong-${idx}`,
+            textAr: val,
+          })),
+        ]),
+        correctOptionId: 'correct',
+        explanation: `Urutan dhamir ${targetDhamir.dhamirAr} (${targetDhamir.artiId}) dalam deret ${tenseLabel} lughawi tersebut adalah ${answer}.`,
+      });
+    });
+
+    return pool;
+  });
+
+  return pickBalancedFromPools(perVerbPools, count);
+}
+
+function buildLughawiAmrQuestions(
+  bab: ShorofBab,
+  count: number
+): QuizQuestion[] {
+  const sectionNumber: ExamSectionNumber = 12;
+
+  const perVerbPools: QuizQuestion[][] = bab.mauzunList.map((verb) => {
+    const amrForms = verb.lughawiAmr;
+    if (!amrForms || amrForms.length < AMR_DHAMIR_INDICES.length) return [];
+    const pool: QuizQuestion[] = [];
+
+    AMR_DHAMIR_INDICES.forEach((dIdx, i) => {
+      const answer = amrForms[i];
+      if (!answer || answer.startsWith('—')) return;
+      const dhamir = DHAMIR_14[dIdx];
+
+      const distractors = shuffleArray(
+        Array.from(new Set(amrForms.filter((v) => v && !v.startsWith('—') && v !== answer)))
+      ).slice(0, 3);
+      if (distractors.length < 3) return;
+
+      pool.push({
+        id: `s12-${verb.id}-${i}`,
+        babId: bab.id,
+        babKode: `${bab.kode} (${bab.wazanAr})`,
+        sectionNumber,
+        sectionTitle: getSectionTitle(sectionNumber),
+        promptId: `Ubah Fi'il Amr dari "${verb.istilahi.fiil_amr}" (${verb.artiDasar}) untuk dhamir ${dhamir.dhamirLatin} (${dhamir.artiId}):`,
+        arabicHighlight: `${verb.istilahi.fiil_amr}  ←  ${dhamir.dhamirAr}`,
+        arabicSubtext: `Target: ${dhamir.kategori} · ${bab.kode}`,
+        options: shuffleArray([
+          { id: 'correct', textAr: answer, textSub: dhamir.dhamirAr },
+          ...distractors.map((val, idx) => ({
+            id: `wrong-${idx}`,
+            textAr: val,
+          })),
+        ]),
+        correctOptionId: 'correct',
+        explanation: `Fi'il Amr lughawi untuk dhamir ${dhamir.dhamirAr} (${dhamir.artiId}) dari ${verb.istilahi.fiil_amr} adalah ${answer}.`,
+      });
+    });
+
+    return pool;
+  });
+
+  return pickBalancedFromPools(perVerbPools, count);
+}
+
 export function getExamQuestionCount(babId: string): number {
   const bab = ALL_SHOROF_BABS.find((b) => b.id === babId);
   return (bab?.questionsPerSection ?? 2) * EXAM_SECTIONS.length;
 }
 
 /**
- * Generates a structured per-Bab exam covering all 6 Bagian
- * (questionsPerSection per Bagian, e.g. 10x6 = 60 for Reguler 1 Bab 1, 2x6 = 12 for others).
+ * Generates a structured per-Bab exam covering all 12 Bagian
+ * (6 Bagian Tashrif Istilahi + 6 Bagian Tashrif Lughawi),
+ * `questionsPerSection` per Bagian (e.g. 10x12 = 120 for Reguler 1 Bab 1).
  */
 export function generateBabExamQuestions(babId: string): QuizQuestion[] {
   const bab = ALL_SHOROF_BABS.find((b) => b.id === babId) || ALL_SHOROF_BABS[0];
   const perSection = bab.questionsPerSection ?? 2;
 
-  const s1 = buildSection1Questions(bab, perSection);
-  const s2 = buildSection2Questions(bab, perSection);
-  const s3 = buildSection3Questions(bab, perSection);
-  const s4 = buildCuratedSectionQuestions(bab, 4, perSection);
-  const s5 = buildCuratedSectionQuestions(bab, 5, perSection);
-  const s6 = buildCuratedSectionQuestions(bab, 6, perSection);
+  const istilahi = [
+    ...buildSection1Questions(bab, perSection),
+    ...buildSection2Questions(bab, perSection),
+    ...buildSection3Questions(bab, perSection),
+    ...buildCuratedSectionQuestions(bab, 4, perSection),
+    ...buildCuratedSectionQuestions(bab, 5, perSection),
+    ...buildCuratedSectionQuestions(bab, 6, perSection),
+  ];
 
-  return [...s1, ...s2, ...s3, ...s4, ...s5, ...s6];
+  const lughawi = [
+    ...buildLughawiTransformQuestions(bab, perSection, 'madhi'),
+    ...buildLughawiReverseQuestions(bab, perSection),
+    ...buildLughawiSequenceQuestions(bab, perSection, 'madhi'),
+    ...buildLughawiTransformQuestions(bab, perSection, 'mudhari'),
+    ...buildLughawiSequenceQuestions(bab, perSection, 'mudhari'),
+    ...buildLughawiAmrQuestions(bab, perSection),
+  ];
+
+  return [...istilahi, ...lughawi];
 }
 
 export function generateQuizQuestions(
@@ -455,9 +728,24 @@ export function generateQuizQuestions(
   const pool: QuizQuestion[] = [];
   targetBabs.forEach((bab) => {
     const perSection = bab.questionsPerSection ?? 2;
-    if (mode === 'istilahi') pool.push(...buildSection1Questions(bab, perSection));
-    else if (mode === 'lughawi') pool.push(...buildSection3Questions(bab, perSection));
-    else pool.push(...buildSection2Questions(bab, perSection));
+    if (mode === 'istilahi') {
+      pool.push(
+        ...buildSection1Questions(bab, perSection),
+        ...buildSection2Questions(bab, perSection),
+        ...buildSection3Questions(bab, perSection)
+      );
+    } else if (mode === 'lughawi') {
+      pool.push(
+        ...buildLughawiTransformQuestions(bab, perSection, 'madhi'),
+        ...buildLughawiReverseQuestions(bab, perSection),
+        ...buildLughawiSequenceQuestions(bab, perSection, 'madhi'),
+        ...buildLughawiTransformQuestions(bab, perSection, 'mudhari'),
+        ...buildLughawiSequenceQuestions(bab, perSection, 'mudhari'),
+        ...buildLughawiAmrQuestions(bab, perSection)
+      );
+    } else {
+      pool.push(...buildSection2Questions(bab, perSection));
+    }
   });
 
   return shuffleArray(pool).slice(0, count);

@@ -565,7 +565,7 @@ export default function App() {
               </div>
               <h1 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
                 {activeSection === 'practice' &&
-                  'Ujian Shorof Per Bab (6 Bagian Evaluasi Terpadu)'}
+                  'Ujian Shorof Per Bab (12 Bagian: 6 Tashrif Istilahi + 6 Tashrif Lughawi)'}
                 {activeSection === 'roster' &&
                   'Daftar Siswa Terpisah: Reguler 1 & 2 (Ikhwan & Akhwat)'}
                 {activeSection === 'recap' &&

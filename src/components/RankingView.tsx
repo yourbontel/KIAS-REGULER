@@ -22,6 +22,7 @@ import {
   StudentGender,
 } from '../data/students';
 import { ALL_SHOROF_BABS, ShorofBab, getBabsForClass } from '../data/shorofData';
+import { SECTION_NUMBERS } from '../utils/babScores';
 import {
   RankedStudentEntry,
   computeStudentRankings,
@@ -721,7 +722,7 @@ export const RankingView: React.FC<RankingViewProps> = ({
                           </span>
                         ) : entry.selectedBabPartialSections > 0 ? (
                           <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">
-                            {entry.selectedBabPartialSections}/6 Bagian
+                            {entry.selectedBabPartialSections}/{SECTION_NUMBERS.length} Bagian
                           </span>
                         ) : (
                           <span className="text-slate-300">—</span>

@@ -9,7 +9,7 @@ import {
   StudentGender,
 } from '../data/students';
 import { ALL_SHOROF_BABS, getBabsForClass } from '../data/shorofData';
-import { summarizeBabAttempts } from '../utils/babScores';
+import { SECTION_NUMBERS, summarizeBabAttempts } from '../utils/babScores';
 
 interface ClassRecapViewProps {
   students: Student[];
@@ -63,7 +63,7 @@ export const ClassRecapView: React.FC<ClassRecapViewProps> = ({
 
   const activeBabs = useMemo(() => getBabsForClass(matrixClass), [matrixClass]);
 
-  // Precompute best score per student per bab (Bab per-Bagian = rata-rata 6 Bagian bila lengkap)
+  // Precompute best score per student per bab (Bab per-Bagian = rata-rata 12 Bagian bila lengkap)
   const { bestScoreMap, partialSectionsMap } = useMemo(() => {
     const byStudent: Record<string, QuizAttempt[]> = {};
     attempts.forEach((att) => {
@@ -352,7 +352,7 @@ export const ClassRecapView: React.FC<ClassRecapViewProps> = ({
                               title="Bagian yang sudah dikerjakan"
                               className="inline-block min-w-[2.2rem] px-1.5 py-0.5 rounded font-semibold text-[10px] bg-sky-50 text-sky-800 border border-sky-200"
                             >
-                              {partialSectionsMap[st.id][bab.id]}/6
+                              {partialSectionsMap[st.id][bab.id]}/{SECTION_NUMBERS.length}
                             </span>
                           ) : (
                             <span className="text-slate-300">—</span>

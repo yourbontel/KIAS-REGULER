@@ -1,11 +1,11 @@
 import { PASSING_SCORE, QuizAttempt } from '../data/students';
 import type { ShorofBab } from '../data/shorofData';
 
-export const SECTION_NUMBERS = [1, 2, 3, 4, 5, 6] as const;
+export const SECTION_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
 export interface BabScoreSummary {
   attemptCount: number;
-  /** Nilai terbaik Bab. Untuk Bab per-Bagian: rata-rata nilai terbaik 6 Bagian (null jika belum lengkap) */
+  /** Nilai terbaik Bab. Untuk Bab per-Bagian: rata-rata nilai terbaik 12 Bagian (6 Istilahi + 6 Lughawi, null jika belum lengkap) */
   bestScore: number | null;
   latestScore: number | null;
   latestTime: string | null;

@@ -95,9 +95,9 @@ export interface ShorofBab {
   kaidahAinFiil: string;
   /** Optional fallback Bab ID in curated exam bank when a Bab shares wazan with another class curriculum */
   bankBabId?: string;
-  /** Number of exam questions per section (default 2, i.e. 12 total across 6 Bagian) */
+  /** Number of exam questions per section (default 2, i.e. 24 total across 12 Bagian: 6 Istilahi + 6 Lughawi) */
   questionsPerSection?: number;
-  /** Jika true, 6 Bagian soal dikerjakan satu per satu (bukan sekaligus) dengan nilai per Bagian */
+  /** Jika true, 12 Bagian soal (6 Istilahi + 6 Lughawi) dikerjakan satu per satu dengan nilai per Bagian */
   sectionedExam?: boolean;
   wazanIstilahi: {
     madhi: string;
