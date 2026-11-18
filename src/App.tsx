@@ -14,6 +14,7 @@ import { StudentRosterView } from './components/StudentRosterView';
 import { ClassRecapView } from './components/ClassRecapView';
 import { LoginView } from './components/LoginView';
 import { StudentProgressView } from './components/StudentProgressView';
+import { RankingView } from './components/RankingView';
 import { AccountModal } from './components/AccountModal';
 import {
   AUTH_STORAGE_KEYS,
@@ -26,7 +27,7 @@ import {
   hashPassword,
 } from './utils/auth';
 
-type ActiveSection = 'practice' | 'roster' | 'recap' | 'my_progress';
+type ActiveSection = 'practice' | 'roster' | 'recap' | 'my_progress' | 'ranking';
 
 const STORAGE_KEYS = {
   STUDENTS: 'albarkah_shorof_students_v1',
@@ -405,12 +406,14 @@ export default function App() {
   const navItems: { id: ActiveSection; label: string; mobileLabel: string }[] = isSuperadmin
     ? [
         { id: 'recap', label: 'Rekap Nilai Per Bab', mobileLabel: 'Rekap Nilai' },
+        { id: 'ranking', label: 'Peringkat Siswa', mobileLabel: 'Peringkat' },
         { id: 'practice', label: 'Ujian Per Bab', mobileLabel: 'Ujian Bab' },
         { id: 'roster', label: 'Data Siswa & Kelas', mobileLabel: 'Data Siswa' },
       ]
     : [
         { id: 'practice', label: 'Ujian Per Bab', mobileLabel: 'Ujian Bab' },
         { id: 'my_progress', label: 'Nilai Saya', mobileLabel: 'Nilai Saya' },
+        { id: 'ranking', label: 'Peringkat Kelas', mobileLabel: 'Peringkat' },
       ];
 
   return (
@@ -530,6 +533,8 @@ export default function App() {
                   'Rekapitulasi Nilai Ujian Per Bab Siswa'}
                 {activeSection === 'my_progress' &&
                   'Rekap Nilai Ujian Per Bab Saya'}
+                {activeSection === 'ranking' &&
+                  'Papan Peringkat & Prestasi Siswa'}
               </h1>
             </div>
 
@@ -681,6 +686,16 @@ export default function App() {
             }}
           />
         )}
+
+        {activeSection === 'ranking' && (
+          <RankingView
+            students={students}
+            attempts={attempts}
+            setoranMap={setoranMap}
+            loggedInStudent={loggedInStudent}
+            isSuperadmin={isSuperadmin}
+          />
+        )}
       </main>
 
       {/* Quiet Footer */}
@@ -696,6 +711,14 @@ export default function App() {
               className="hover:text-slate-900 transition-colors"
             >
               Ujian Per Bab
+            </button>
+            <span aria-hidden="true">·</span>
+            <button
+              type="button"
+              onClick={() => setActiveSection('ranking')}
+              className="hover:text-slate-900 transition-colors"
+            >
+              Peringkat Siswa
             </button>
             {isSuperadmin ? (
               <>
