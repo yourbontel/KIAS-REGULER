@@ -97,6 +97,8 @@ export const RankingView: React.FC<RankingViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [babMenuOpen, setBabMenuOpen] = useState(false);
   const babDropdownRef = useRef<HTMLDivElement>(null);
+  const effectiveKelas = !isSuperadmin && loggedInStudent ? loggedInStudent.kelas : kelasFilter;
+  const effectiveGender = !isSuperadmin && loggedInStudent ? loggedInStudent.gender : genderFilter;
 
   useEffect(() => {
     if (!babMenuOpen) return;
@@ -120,9 +122,9 @@ export const RankingView: React.FC<RankingViewProps> = ({
   }, [babMenuOpen]);
 
   const availableBabs = useMemo(() => {
-    if (kelasFilter === 'Semua') return ALL_SHOROF_BABS;
-    return getBabsForClass(kelasFilter);
-  }, [kelasFilter]);
+    if (effectiveKelas === 'Semua') return ALL_SHOROF_BABS;
+    return getBabsForClass(effectiveKelas);
+  }, [effectiveKelas]);
 
   const groupedAvailableBabs = useMemo(() => {
     const groups: { kategori: ShorofBab['kategori']; items: ShorofBab[] }[] = [];
@@ -150,11 +152,11 @@ export const RankingView: React.FC<RankingViewProps> = ({
   const fullRankedList = useMemo(
     () =>
       computeStudentRankings(students, attempts, setoranMap, {
-        kelas: kelasFilter,
-        gender: genderFilter,
+        kelas: effectiveKelas,
+        gender: effectiveGender,
         babId: selectedBabId,
       }),
-    [students, attempts, setoranMap, kelasFilter, genderFilter, selectedBabId]
+    [students, attempts, setoranMap, effectiveKelas, effectiveGender, selectedBabId]
   );
 
   const visibleRows = useMemo(() => {
@@ -179,7 +181,7 @@ export const RankingView: React.FC<RankingViewProps> = ({
     // Always compute student's own standing inside their own class cohort
     const classRankings = computeStudentRankings(students, attempts, setoranMap, {
       kelas: loggedInStudent.kelas,
-      gender: 'Semua',
+      gender: loggedInStudent.gender,
       babId: selectedBabId,
     });
     const entry =
@@ -388,7 +390,7 @@ export const RankingView: React.FC<RankingViewProps> = ({
           <div className="space-y-3">
             {/* Baris 1: Segmented Pill Filters untuk Kelas & Kelompok + Search */}
             <div className="flex flex-wrap items-center gap-2.5">
-              <div
+              {isSuperadmin && <div
                 role="group"
                 aria-label="Filter Kelas Ranking"
                 className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/80"
@@ -416,9 +418,9 @@ export const RankingView: React.FC<RankingViewProps> = ({
                     </button>
                   );
                 })}
-              </div>
+              </div>}
 
-              <div
+              {isSuperadmin && <div
                 role="group"
                 aria-label="Filter Kelompok Ranking"
                 className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/80"
@@ -446,7 +448,7 @@ export const RankingView: React.FC<RankingViewProps> = ({
                     </button>
                   );
                 })}
-              </div>
+              </div>}
 
               {/* Custom Categorized Bab Picker Dropdown */}
               <div ref={babDropdownRef} className="relative flex-1 min-w-[240px] sm:max-w-[340px]">
