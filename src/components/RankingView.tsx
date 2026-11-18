@@ -1,8 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Award,
+  BookOpen,
+  Check,
+  ChevronDown,
   Crown,
   Download,
+  MapPin,
   Medal,
   Search,
   Trophy,
@@ -17,7 +21,7 @@ import {
   StudentClass,
   StudentGender,
 } from '../data/students';
-import { ALL_SHOROF_BABS, getBabsForClass } from '../data/shorofData';
+import { ALL_SHOROF_BABS, ShorofBab, getBabsForClass } from '../data/shorofData';
 import {
   RankedStudentEntry,
   computeStudentRankings,
@@ -30,6 +34,13 @@ interface RankingViewProps {
   setoranMap: Record<string, SetoranRecord>;
   loggedInStudent?: Student;
   isSuperadmin?: boolean;
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 function renderRankBadge(rank: number | null) {
@@ -84,11 +95,44 @@ export const RankingView: React.FC<RankingViewProps> = ({
   const [genderFilter, setGenderFilter] = useState<'Semua' | StudentGender>('Semua');
   const [selectedBabId, setSelectedBabId] = useState<'all' | string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [babMenuOpen, setBabMenuOpen] = useState(false);
+  const babDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!babMenuOpen) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (
+        babDropdownRef.current &&
+        !babDropdownRef.current.contains(e.target as Node)
+      ) {
+        setBabMenuOpen(false);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setBabMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handleOutside);
+    window.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      window.removeEventListener('keydown', handleEsc);
+    };
+  }, [babMenuOpen]);
 
   const availableBabs = useMemo(() => {
     if (kelasFilter === 'Semua') return ALL_SHOROF_BABS;
     return getBabsForClass(kelasFilter);
   }, [kelasFilter]);
+
+  const groupedAvailableBabs = useMemo(() => {
+    const groups: { kategori: ShorofBab['kategori']; items: ShorofBab[] }[] = [];
+    availableBabs.forEach((bab) => {
+      const existing = groups.find((g) => g.kategori === bab.kategori);
+      if (existing) existing.items.push(bab);
+      else groups.push({ kategori: bab.kategori, items: [bab] });
+    });
+    return groups;
+  }, [availableBabs]);
 
   const handleChangeKelas = (nextKelas: 'Semua' | StudentClass) => {
     setKelasFilter(nextKelas);
@@ -307,7 +351,7 @@ export const RankingView: React.FC<RankingViewProps> = ({
       )}
 
       {/* Filter Bar & Leaderboard Table */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-xl">
         <div className="px-6 py-4 border-b border-slate-200 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -341,70 +385,216 @@ export const RankingView: React.FC<RankingViewProps> = ({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Kelas */}
-            <select
-              aria-label="Filter Kelas Ranking"
-              value={kelasFilter}
-              onChange={(e) =>
-                handleChangeKelas(e.target.value as 'Semua' | StudentClass)
-              }
-              className="px-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-lg"
-            >
-              <option value="Reguler 1">Reguler 1 (14 Bab)</option>
-              <option value="Reguler 2">Reguler 2 (9 Bab)</option>
-              <option value="Semua">Semua Kelas</option>
-            </select>
+          <div className="space-y-3">
+            {/* Baris 1: Segmented Pill Filters untuk Kelas & Kelompok + Search */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div
+                role="group"
+                aria-label="Filter Kelas Ranking"
+                className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/80"
+              >
+                {(
+                  [
+                    { value: 'Reguler 1', label: 'Reguler 1' },
+                    { value: 'Reguler 2', label: 'Reguler 2' },
+                    { value: 'Semua', label: 'Semua' },
+                  ] as const
+                ).map((opt) => {
+                  const active = kelasFilter === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => handleChangeKelas(opt.value)}
+                      className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                        active
+                          ? 'bg-white text-emerald-800 shadow-xs ring-1 ring-emerald-200'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
 
-            {/* Kelompok */}
-            <select
-              aria-label="Filter Kelompok Ranking"
-              value={genderFilter}
-              onChange={(e) =>
-                setGenderFilter(e.target.value as 'Semua' | StudentGender)
-              }
-              className="px-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-lg"
-            >
-              <option value="Semua">Ikhwan &amp; Akhwat</option>
-              <option value="Ikhwan">Ikhwan</option>
-              <option value="Akhwat">Akhwat</option>
-            </select>
+              <div
+                role="group"
+                aria-label="Filter Kelompok Ranking"
+                className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/80"
+              >
+                {(
+                  [
+                    { value: 'Semua', label: 'Semua' },
+                    { value: 'Ikhwan', label: 'Ikhwan' },
+                    { value: 'Akhwat', label: 'Akhwat' },
+                  ] as const
+                ).map((opt) => {
+                  const active = genderFilter === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setGenderFilter(opt.value)}
+                      className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                        active
+                          ? 'bg-white text-emerald-800 shadow-xs ring-1 ring-emerald-200'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
 
-            {/* Jenis Peringkat: Keseluruhan / Per Bab */}
-            <select
-              aria-label="Filter Bab Ranking"
-              value={selectedBabId}
-              onChange={(e) => setSelectedBabId(e.target.value)}
-              className="px-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-lg"
-            >
-              <option value="all">Peringkat Keseluruhan (Semua Bab)</option>
-              {availableBabs.map((bab) => (
-                <option key={bab.id} value={bab.id}>
-                  {bab.kode} · {bab.wazanLatin}
-                </option>
-              ))}
-            </select>
-
-            {/* Pencarian Siswa */}
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari nama siswa atau kota..."
-                className="w-full pl-8 pr-8 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-600"
-              />
-              {searchQuery && (
+              {/* Custom Categorized Bab Picker Dropdown */}
+              <div ref={babDropdownRef} className="relative flex-1 min-w-[240px] sm:max-w-[340px]">
                 <button
                   type="button"
-                  onClick={() => setSearchQuery('')}
-                  aria-label="Hapus pencarian"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-700"
+                  aria-haspopup="listbox"
+                  aria-expanded={babMenuOpen}
+                  onClick={() => setBabMenuOpen((v) => !v)}
+                  className={`w-full flex items-center justify-between gap-2.5 px-3.5 py-2 rounded-xl border text-left transition-all ${
+                    babMenuOpen
+                      ? 'bg-white border-emerald-600 ring-2 ring-emerald-500/15'
+                      : 'bg-[#F8FAFC] border-slate-200 hover:border-slate-300 hover:bg-white'
+                  }`}
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <BookOpen className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                    {activeBabMeta ? (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
+                          {activeBabMeta.kode}
+                        </span>
+                        <span className="font-arabic text-base font-bold text-slate-900 shrink-0">
+                          {activeBabMeta.wazanAr}
+                        </span>
+                        <span className="text-[11px] text-slate-500 truncate hidden sm:inline">
+                          {activeBabMeta.wazanLatin}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs font-semibold text-slate-800 truncate">
+                        Peringkat Keseluruhan (Semua Bab)
+                      </span>
+                    )}
+                  </div>
+                  <ChevronDown
+                    className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${
+                      babMenuOpen ? 'rotate-180 text-emerald-700' : ''
+                    }`}
+                  />
                 </button>
-              )}
+
+                {babMenuOpen && (
+                  <div
+                    role="listbox"
+                    className="absolute left-0 mt-2 w-full sm:w-[420px] max-h-80 overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-xl z-30 p-2 space-y-2"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedBabId('all');
+                        setBabMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
+                        selectedBabId === 'all'
+                          ? 'bg-emerald-50 border border-emerald-200 text-emerald-950'
+                          : 'hover:bg-slate-50 border border-transparent text-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0">
+                          <Trophy className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold truncate">
+                            Peringkat Keseluruhan (Semua Bab)
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            Akumulasi total skor seluruh Bab pada kelas terpilih
+                          </div>
+                        </div>
+                      </div>
+                      {selectedBabId === 'all' && (
+                        <Check className="w-4 h-4 text-emerald-700 shrink-0" />
+                      )}
+                    </button>
+
+                    {groupedAvailableBabs.map((group) => (
+                      <div key={group.kategori} className="space-y-1">
+                        <div className="px-2.5 pt-1.5 pb-0.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          <span>{group.kategori}</span>
+                          <span>{group.items.length} Bab</span>
+                        </div>
+                        {group.items.map((bab) => {
+                          const isSelected = selectedBabId === bab.id;
+                          return (
+                            <button
+                              key={bab.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedBabId(bab.id);
+                                setBabMenuOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-left transition-colors ${
+                                isSelected
+                                  ? 'bg-emerald-50 border border-emerald-200'
+                                  : 'hover:bg-slate-50 border border-transparent'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <span
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-md border shrink-0 ${
+                                    isSelected
+                                      ? 'bg-emerald-700 text-white border-emerald-700'
+                                      : 'bg-slate-100 text-slate-700 border-slate-200'
+                                  }`}
+                                >
+                                  {bab.kode}
+                                </span>
+                                <span className="font-arabic text-lg font-bold text-slate-900 shrink-0 leading-none">
+                                  {bab.wazanAr}
+                                </span>
+                                <span className="text-[11px] text-slate-500 truncate">
+                                  {bab.wazanLatin}
+                                </span>
+                              </div>
+                              {isSelected && (
+                                <Check className="w-4 h-4 text-emerald-700 shrink-0" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Pencarian Siswa */}
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari nama siswa atau kota..."
+                  className="w-full pl-8 pr-8 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-xl focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    aria-label="Hapus pencarian"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-700"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -450,24 +640,55 @@ export const RankingView: React.FC<RankingViewProps> = ({
                     >
                       <td className="py-3 px-4">{renderRankBadge(entry.rank)}</td>
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-slate-900">
-                            {entry.student.name}
-                          </span>
-                          {isMe && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-700 text-white">
-                              Anda
-                            </span>
-                          )}
-                          {entry.student.id.startsWith('demo-') && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-900 text-white">
-                              DEMO
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
-                          {entry.student.kelas} · {entry.student.gender}
-                          {entry.student.kota ? ` · ${entry.student.kota}` : ''}
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 border ${
+                              entry.student.id.startsWith('demo-')
+                                ? 'bg-slate-900 text-white border-slate-900'
+                                : entry.student.gender === 'Ikhwan'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : 'bg-teal-50 text-teal-800 border-teal-200'
+                            }`}
+                          >
+                            {getInitials(entry.student.name)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-semibold text-slate-900 truncate">
+                                {entry.student.name}
+                              </span>
+                              {isMe && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-700 text-white shrink-0">
+                                  Anda
+                                </span>
+                              )}
+                              {entry.student.id.startsWith('demo-') && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-900 text-white shrink-0">
+                                  DEMO
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                              <span
+                                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                  entry.student.kelas === 'Reguler 1'
+                                    ? 'bg-emerald-50 text-emerald-800'
+                                    : 'bg-sky-50 text-sky-800'
+                                }`}
+                              >
+                                {entry.student.kelas}
+                              </span>
+                              <span className="text-[11px] text-slate-500">
+                                {entry.student.gender}
+                              </span>
+                              {entry.student.kota && (
+                                <span className="inline-flex items-center gap-0.5 text-[11px] text-slate-400">
+                                  <MapPin className="w-2.5 h-2.5" />
+                                  {entry.student.kota}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center tabular-nums">
