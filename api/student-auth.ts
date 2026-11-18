@@ -41,7 +41,7 @@ const ensureTable = async () => {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
-  if (req.method === 'POST' && req.body?.action === 'admin-login') {
+  if (req.method === 'POST' && (req.query?.action === 'admin-login' || req.body?.action === 'admin-login')) {
     try {
       await ensureTable();
       await pool.query(`CREATE TABLE IF NOT EXISTS superadmin_credentials (
