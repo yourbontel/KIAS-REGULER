@@ -578,6 +578,120 @@ const R1_BAB6: ShorofBab = {
   ],
 };
 
+function buildFaalaVerb(
+  id: string,
+  babId: string,
+  rootLetters: [string, string, string],
+  artiDasar: string,
+  mashdar: string
+): MauzunVerb {
+  const [f, a, l] = rootLetters;
+  const nunNiswahEnd = l === 'ن' ? 'َّ' : 'ْنَ';
+  const nahnuMadhiEnd = l === 'ن' ? 'َّا' : 'ْنَا';
+  const madhiStem = `${f}َ${a}َّ${l}`;
+  const mudhariStem = `${a}ِّ${l}`;
+  const amrStem = `${f}َ${a}ِّ${l}`;
+
+  return {
+    id,
+    babId,
+    rootLetters,
+    artiDasar,
+    istilahi: {
+      madhi: `${madhiStem}َ`,
+      mudhari: `يُ${f}َ${mudhariStem}ُ`,
+      mashdar,
+      isim_fail: `مُ${f}َ${a}ِّ${l}ٌ`,
+      isim_maful: `مُ${f}َ${a}َّ${l}ٌ`,
+      fiil_amr: `${amrStem}ْ`,
+      fiil_nahyi: `لَا تُ${f}َ${a}ِّ${l}ْ`,
+      isim_zaman_makan: `مُ${f}َ${a}َّ${l}ٌ`,
+      isim_alat: '—',
+      madhi_majhul: `${f}ُ${a}ِّ${l}َ`,
+      mudhari_majhul: `يُ${f}َ${a}َّ${l}ُ`,
+    },
+    lughawiMadhi: [
+      `${madhiStem}َ`,
+      `${madhiStem}َا`,
+      `${madhiStem}ُوا`,
+      `${madhiStem}َتْ`,
+      `${madhiStem}َتَا`,
+      `${madhiStem}${nunNiswahEnd}`,
+      `${madhiStem}ْتَ`,
+      `${madhiStem}ْتُمَا`,
+      `${madhiStem}ْتُمْ`,
+      `${madhiStem}ْتِ`,
+      `${madhiStem}ْتُمَا`,
+      `${madhiStem}ْتُنَّ`,
+      `${madhiStem}ْتُ`,
+      `${madhiStem}${nahnuMadhiEnd}`,
+    ],
+    lughawiMudhari: [
+      `يُ${f}َ${mudhariStem}ُ`,
+      `يُ${f}َ${mudhariStem}َانِ`,
+      `يُ${f}َ${mudhariStem}ُونَ`,
+      `تُ${f}َ${mudhariStem}ُ`,
+      `تُ${f}َ${mudhariStem}َانِ`,
+      `يُ${f}َ${mudhariStem}${nunNiswahEnd}`,
+      `تُ${f}َ${mudhariStem}ُ`,
+      `تُ${f}َ${mudhariStem}َانِ`,
+      `تُ${f}َ${mudhariStem}ُونَ`,
+      `تُ${f}َ${mudhariStem}ِينَ`,
+      `تُ${f}َ${mudhariStem}َانِ`,
+      `تُ${f}َ${mudhariStem}${nunNiswahEnd}`,
+      `أُ${f}َ${mudhariStem}ُ`,
+      `نُ${f}َ${mudhariStem}ُ`,
+    ],
+    lughawiAmr: [
+      `${amrStem}ْ`,
+      `${amrStem}َا`,
+      `${amrStem}ُوا`,
+      `${amrStem}ِي`,
+      `${amrStem}َا`,
+      `${amrStem}${nunNiswahEnd}`,
+    ],
+  };
+}
+
+const MAZID1_BAB1: ShorofBab = {
+  id: 'mazid1-bab-1',
+  kode: 'Mazid 1 · Bab 1',
+  namaBab: "Tsulatsi Mazid +1 Huruf Bab 1 (Fa''ala - Yufa''ilu)",
+  kategori: 'Tsulatsi Mazid (+1 Huruf)',
+  wazanAr: 'فَعَّلَ - يُفَعِّلُ',
+  wazanLatin: "Fa''ala - Yufa''ilu",
+  kaidahAinFiil: "Tambahan Tasydid (penggandaan) pada 'Ain Fi'il (bermakna Taktsir / Ta'diyah)",
+  questionsPerSection: 10,
+  sectionedExam: true,
+  wazanIstilahi: {
+    madhi: 'فَعَّلَ',
+    mudhari: 'يُفَعِّلُ',
+    mashdar: 'تَفْعِيلًا',
+    isim_fail: 'مُفَعِّلٌ',
+    isim_maful: 'مُفَعَّلٌ',
+    fiil_amr: 'فَعِّلْ',
+    fiil_nahyi: 'لَا تُفَعِّلْ',
+    isim_zaman_makan: 'مُفَعَّلٌ',
+    isim_alat: '—',
+    madhi_majhul: 'فُعِّلَ',
+    mudhari_majhul: 'يُفَعَّلُ',
+  },
+  mauzunList: [
+    buildFaalaVerb('r1-hammada', 'mazid1-bab-1', ['ح', 'م', 'د'], 'Bertahmid', 'تَحْمِيدًا'),
+    buildFaalaVerb('r1-bayyana', 'mazid1-bab-1', ['ب', 'ي', 'ن'], 'Menjelaskan', 'تَبْيِينًا'),
+    buildFaalaVerb('r1-thahhara', 'mazid1-bab-1', ['ط', 'ه', 'ر'], 'Mensucikan', 'تَطْهِيرًا'),
+    buildFaalaVerb('r1-karrama', 'mazid1-bab-1', ['ك', 'ر', 'م'], 'Memuliakan', 'تَكْرِيمًا'),
+    buildFaalaVerb('r1-kadzdzaba', 'mazid1-bab-1', ['ك', 'ذ', 'ب'], 'Mendustakan', 'تَكْذِيبًا'),
+    buildFaalaVerb('r1-haddatsa', 'mazid1-bab-1', ['ح', 'د', 'ث'], 'Menceritakan', 'تَحْدِيثًا'),
+    buildFaalaVerb('r1-fassara', 'mazid1-bab-1', ['ف', 'س', 'ر'], 'Menafsirkan', 'تَفْسِيرًا'),
+    buildFaalaVerb('r1-sabbaha', 'mazid1-bab-1', ['س', 'ب', 'ح'], 'Bertasbih', 'تَسْبِيحًا'),
+    buildFaalaVerb('r1-allama', 'mazid1-bab-1', ['ع', 'ل', 'م'], 'Mengajarkan', 'تَعْلِيمًا'),
+    buildFaalaVerb('r1-shaddaqa', 'mazid1-bab-1', ['ص', 'د', 'ق'], 'Membenarkan', 'تَصْدِيقًا'),
+    buildFaalaVerb('r1-hawwala', 'mazid1-bab-1', ['ح', 'و', 'ل'], 'Mengubah', 'تَحْوِيلًا'),
+    buildFaalaVerb('r1-kabbara', 'mazid1-bab-1', ['ك', 'ب', 'ر'], 'Bertakbir', 'تَكْبِيرًا'),
+  ],
+};
+
 export const SHOROF_BABS_REGULER_1: ShorofBab[] = [
   // 6 Bab Tsulatsi Mujarrod
   R1_BAB1, // Bab 1: فَعَلَ - يَفْعُلُ (12 Mufradat, 60 soal)
@@ -587,12 +701,7 @@ export const SHOROF_BABS_REGULER_1: ShorofBab[] = [
   R1_BAB5, // Bab 5: فَعِلَ - يَفْعَلُ (12 Mufradat, 60 soal)
   R1_BAB6, // Bab 6: فَعُلَ - يَفْعُلُ (6 Mufradat, 60 soal)
   // 3 Bab Tsulatsi Mazid (+1 Huruf)
-  cloneReguler2Bab('mazid-2', {
-    id: 'mazid1-bab-1',
-    kode: 'Mazid 1 · Bab 1',
-    namaBab: "Tsulatsi Mazid +1 Huruf Bab 1 (Fa''ala - Yufa''ilu)",
-    kategori: 'Tsulatsi Mazid (+1 Huruf)',
-  }),
+  MAZID1_BAB1, // Mazid 1 Bab 1: فَعَّلَ - يُفَعِّلُ (12 Mufradat, 10 soal/Bagian)
   MAZID1_BAB2,
   cloneReguler2Bab('mazid-1', {
     id: 'mazid1-bab-3',
