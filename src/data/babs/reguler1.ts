@@ -16,6 +16,81 @@ function cloneReguler2Bab(
   };
 }
 
+function buildFaaalaVerb(
+  id: string,
+  babId: string,
+  rootLetters: [string, string, string],
+  artiDasar: string,
+  mashdar?: string
+): MauzunVerb {
+  const [f, a, l] = rootLetters;
+  const nunNiswahEnd = l === 'ن' ? 'َّ' : 'ْنَ';
+  const nahnuMadhiEnd = l === 'ن' ? 'َّا' : 'ْنَا';
+  const madhiStem = `${f}َا${a}َ${l}`;
+  const mudhariStem = `${f}َا${a}ِ${l}`;
+  const amrStem = `${f}َا${a}ِ${l}`;
+
+  return {
+    id,
+    babId,
+    rootLetters,
+    artiDasar,
+    istilahi: {
+      madhi: `${madhiStem}َ`,
+      mudhari: `يُ${mudhariStem}ُ`,
+      mashdar: mashdar ?? `مُ${f}َا${a}َ${l}َةً`,
+      isim_fail: `مُ${f}َا${a}ِ${l}ٌ`,
+      isim_maful: `مُ${f}َا${a}َ${l}ٌ`,
+      fiil_amr: `${amrStem}ْ`,
+      fiil_nahyi: `لَا تُ${mudhariStem}ْ`,
+      isim_zaman_makan: `مُ${f}َا${a}َ${l}ٌ`,
+      isim_alat: '—',
+      madhi_majhul: `${f}ُو${a}ِ${l}َ`,
+      mudhari_majhul: `يُ${f}َا${a}َ${l}ُ`,
+    },
+    lughawiMadhi: [
+      `${madhiStem}َ`,
+      `${madhiStem}َا`,
+      `${madhiStem}ُوا`,
+      `${madhiStem}َتْ`,
+      `${madhiStem}َتَا`,
+      `${madhiStem}${nunNiswahEnd}`,
+      `${madhiStem}ْتَ`,
+      `${madhiStem}ْتُمَا`,
+      `${madhiStem}ْتُمْ`,
+      `${madhiStem}ْتِ`,
+      `${madhiStem}ْتُمَا`,
+      `${madhiStem}ْتُنَّ`,
+      `${madhiStem}ْتُ`,
+      `${madhiStem}${nahnuMadhiEnd}`,
+    ],
+    lughawiMudhari: [
+      `يُ${mudhariStem}ُ`,
+      `يُ${mudhariStem}َانِ`,
+      `يُ${mudhariStem}ُونَ`,
+      `تُ${mudhariStem}ُ`,
+      `تُ${mudhariStem}َانِ`,
+      `يُ${mudhariStem}${nunNiswahEnd}`,
+      `تُ${mudhariStem}ُ`,
+      `تُ${mudhariStem}َانِ`,
+      `تُ${mudhariStem}ُونَ`,
+      `تُ${mudhariStem}ِينَ`,
+      `تُ${mudhariStem}َانِ`,
+      `تُ${mudhariStem}${nunNiswahEnd}`,
+      `أُ${mudhariStem}ُ`,
+      `نُ${mudhariStem}ُ`,
+    ],
+    lughawiAmr: [
+      `${amrStem}ْ`,
+      `${amrStem}َا`,
+      `${amrStem}ُوا`,
+      `${amrStem}ِي`,
+      `${amrStem}َا`,
+      `${amrStem}${nunNiswahEnd}`,
+    ],
+  };
+}
+
 const MAZID1_BAB2: ShorofBab = {
   id: 'mazid1-bab-2',
   kode: 'Mazid 1 · Bab 2',
@@ -24,6 +99,8 @@ const MAZID1_BAB2: ShorofBab = {
   wazanAr: 'فَاعَلَ - يُفَاعِلُ',
   wazanLatin: "Faa'ala - Yufaa'ilu",
   kaidahAinFiil: "Tambahan Alif setelah Fa' Fi'il (makna musyarakah/saling atau berulang)",
+  questionsPerSection: 10,
+  sectionedExam: true,
   wazanIstilahi: {
     madhi: 'فَاعَلَ',
     mudhari: 'يُفَاعِلُ',
@@ -38,40 +115,18 @@ const MAZID1_BAB2: ShorofBab = {
     mudhari_majhul: 'يُفَاعَلُ',
   },
   mauzunList: [
-    {
-      id: 'saada',
-      babId: 'mazid1-bab-2',
-      rootLetters: ['س', 'ع', 'د'],
-      artiDasar: 'Membantu / Menolong',
-      istilahi: {
-        madhi: 'سَاعَدَ',
-        mudhari: 'يُسَاعِدُ',
-        mashdar: 'مُسَاعَدَةً',
-        isim_fail: 'مُسَاعِدٌ',
-        isim_maful: 'مُسَاعَدٌ',
-        fiil_amr: 'سَاعِدْ',
-        fiil_nahyi: 'لَا تُسَاعِدْ',
-        isim_zaman_makan: 'مُسَاعَدٌ',
-        isim_alat: '—',
-        madhi_majhul: 'سُوعِدَ',
-        mudhari_majhul: 'يُسَاعَدُ',
-      },
-      lughawiMadhi: [
-        'سَاعَدَ', 'سَاعَدَا', 'سَاعَدُوا',
-        'سَاعَدَتْ', 'سَاعَدَتَا', 'سَاعَدْنَ',
-        'سَاعَدْتَ', 'سَاعَدْتُمَا', 'سَاعَدْتُمْ',
-        'سَاعَدْتِ', 'سَاعَدْتُمَا', 'سَاعَدْتُنَّ',
-        'سَاعَدْتُ', 'سَاعَدْنَا',
-      ],
-      lughawiMudhari: [
-        'يُسَاعِدُ', 'يُسَاعِدَانِ', 'يُسَاعِدُونَ',
-        'تُسَاعِدُ', 'تُسَاعِدَانِ', 'يُسَاعِدْنَ',
-        'تُسَاعِدُ', 'تُسَاعِدَانِ', 'تُسَاعِدُونَ',
-        'تُسَاعِدِينَ', 'تُسَاعِدَانِ', 'تُسَاعِدْنَ',
-        'أُسَاعِدُ', 'نُسَاعِدُ',
-      ],
-      lughawiAmr: ['سَاعِدْ', 'سَاعِدَا', 'سَاعِدُوا', 'سَاعِدِي', 'سَاعِدَا', 'سَاعِدْنَ'],
-    },
+    buildFaaalaVerb('r1-baaraka', 'mazid1-bab-2', ['ب', 'ر', 'ك'], 'Memberkati'),
+    buildFaaalaVerb('r1-qaatala', 'mazid1-bab-2', ['ق', 'ت', 'ل'], 'Memerangi'),
+    buildFaaalaVerb('r1-aawada', 'mazid1-bab-2', ['ع', 'و', 'د'], 'Membiasakan'),
+    buildFaaalaVerb('r1-saafara', 'mazid1-bab-2', ['س', 'ف', 'ر'], 'Berpergian jauh'),
+    buildFaaalaVerb('r1-raasala', 'mazid1-bab-2', ['ر', 'س', 'ل'], 'Bersurat-suratan'),
+    buildFaaalaVerb('r1-syaawara', 'mazid1-bab-2', ['ش', 'و', 'ر'], 'Musyawarah'),
+    buildFaaalaVerb('r1-jaahada', 'mazid1-bab-2', ['ج', 'ه', 'د'], 'Bersungguh-sungguh'),
+    buildFaaalaVerb('r1-baalagha', 'mazid1-bab-2', ['ب', 'ل', 'غ'], 'Berlebih-lebihan'),
+    buildFaaalaVerb('r1-aawana', 'mazid1-bab-2', ['ع', 'و', 'ن'], 'Menolong'),
+    buildFaaalaVerb('r1-saamaha', 'mazid1-bab-2', ['س', 'م', 'ح'], 'Memaafkan'),
+    buildFaaalaVerb('r1-dhaaafa', 'mazid1-bab-2', ['ض', 'ع', 'ف'], 'Menggandakan'),
+    buildFaaalaVerb('r1-khaashama', 'mazid1-bab-2', ['خ', 'ص', 'م'], 'Berdebat'),
   ],
 };
 
