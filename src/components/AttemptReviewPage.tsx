@@ -11,6 +11,11 @@ import { ALL_SHOROF_BABS } from '../data/shorofData';
 import { EXAM_SECTIONS } from '../utils/quizGenerator';
 import { getInitialSession } from '../utils/auth';
 import {
+  DEFAULT_EXAM_ACCESS,
+  type ExamAccessConfig,
+  isBabOpen,
+} from '../utils/examAccess';
+import {
   buildExamUrl,
   loadLocalAttempts,
   loadLocalStudents,
@@ -27,6 +32,7 @@ export const AttemptReviewPage: React.FC = () => {
 
   const [students, setStudents] = useState<Student[]>(() => loadLocalStudents());
   const [attempts, setAttempts] = useState<QuizAttempt[]>(() => loadLocalAttempts());
+  const [examAccess, setExamAccess] = useState<ExamAccessConfig>(DEFAULT_EXAM_ACCESS);
   const [loadingData, setLoadingData] = useState(true);
 
   const [reviewItems, setReviewItems] = useState<QuizAttemptReviewItem[] | null>(null);
@@ -40,6 +46,9 @@ export const AttemptReviewPage: React.FC = () => {
         if (cancelled) return;
         setAttempts(data.attempts);
         setStudents(mergeStudentRecords(INITIAL_STUDENTS, data.studentRecords));
+        if (data.examAccess) {
+          setExamAccess(data.examAccess);
+        }
         saveLocalAttempts(data.attempts);
       })
       .catch((err) => {
@@ -276,7 +285,7 @@ export const AttemptReviewPage: React.FC = () => {
           reviewError={reviewError}
           onRetryLoadReview={() => void fetchReview(targetAttempt)}
           onRetryExam={
-            targetBab && !targetBab.sectionedExam
+            targetBab && !targetBab.sectionedExam && isBabOpen(examAccess, targetBab.id)
               ? () =>
                   window.location.assign(
                     buildExamUrl({

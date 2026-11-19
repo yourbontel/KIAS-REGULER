@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   GraduationCap,
+  Lock,
   ShieldCheck,
   X,
 } from 'lucide-react';
@@ -22,6 +23,11 @@ import {
   generateBabExamQuestions,
 } from '../utils/quizGenerator';
 import { getInitialSession } from '../utils/auth';
+import {
+  DEFAULT_EXAM_ACCESS,
+  type ExamAccessConfig,
+  isSectionOpen,
+} from '../utils/examAccess';
 import {
   clearExamDraft,
   loadExamDraft,
@@ -69,6 +75,7 @@ export const ExamSessionPage: React.FC = () => {
 
   const [students, setStudents] = useState<Student[]>(() => loadLocalStudents());
   const [attempts, setAttempts] = useState<QuizAttempt[]>(() => loadLocalAttempts());
+  const [examAccess, setExamAccess] = useState<ExamAccessConfig>(DEFAULT_EXAM_ACCESS);
   const [loadingRemote, setLoadingRemote] = useState(true);
 
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -113,6 +120,9 @@ export const ExamSessionPage: React.FC = () => {
         if (cancelled) return;
         setAttempts(data.attempts);
         setStudents(mergeStudentRecords(INITIAL_STUDENTS, data.studentRecords));
+        if (data.examAccess) {
+          setExamAccess(data.examAccess);
+        }
         saveLocalAttempts(data.attempts);
       })
       .catch((err) => {
@@ -138,6 +148,11 @@ export const ExamSessionPage: React.FC = () => {
     );
   }, [attempts, activeStudent, targetBab, activeSectionNumber]);
 
+  const isTargetExamOpen = useMemo(() => {
+    if (!targetBab) return false;
+    return isSectionOpen(examAccess, targetBab.id, activeSectionNumber);
+  }, [examAccess, targetBab, activeSectionNumber]);
+
   // Initialize or restore draft once remote check completes
   useEffect(() => {
     if (loadingRemote || !targetBab || !activeStudent) return;
@@ -145,6 +160,7 @@ export const ExamSessionPage: React.FC = () => {
       clearExamDraft(activeStudent.id, targetBab.id, activeSectionNumber);
       return;
     }
+    if (!isTargetExamOpen) return;
     if (submittedResult || questions.length > 0) return;
 
     const draft = loadExamDraft(activeStudent.id, targetBab.id, activeSectionNumber);
@@ -474,6 +490,35 @@ export const ExamSessionPage: React.FC = () => {
         <main className="flex-1 max-w-[1360px] w-full mx-auto px-4 sm:px-6 py-16 flex items-center justify-center">
           <div className="bg-white border border-slate-200 rounded-xl px-6 py-5 text-xs sm:text-sm text-slate-600">
             Memuat data ujian...
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!existingSectionAttempt && !submittedResult && !isTargetExamOpen) {
+    return (
+      <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900">
+        {renderHeader()}
+        <main className="flex-1 max-w-lg w-full mx-auto px-4 py-16 flex items-center justify-center">
+          <div className="w-full bg-white border border-rose-200 rounded-2xl p-6 text-center space-y-4">
+            <div className="w-11 h-11 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 flex items-center justify-center mx-auto">
+              <Lock className="w-5 h-5" />
+            </div>
+            <h1 className="text-lg font-bold text-slate-900">Akses Soal Ditutup</h1>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              Soal untuk <strong>{targetBab.kode}</strong>
+              {activeSectionNumber ? ` (${sectionLabel(activeSectionNumber)})` : ''} sedang
+              ditutup oleh Superadmin. Silakan hubungi pengajar atau kembali ke daftar bab.
+            </p>
+            <button
+              type="button"
+              onClick={navigateBackToHome}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              Kembali ke Daftar Bab
+            </button>
           </div>
         </main>
       </div>

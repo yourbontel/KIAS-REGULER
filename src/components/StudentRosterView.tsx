@@ -3,7 +3,6 @@ import {
   Search,
   Download,
   UserPlus,
-  Play,
   Check,
   ArrowLeftRight,
   KeyRound,
@@ -22,7 +21,6 @@ interface StudentRosterViewProps {
   attempts: QuizAttempt[];
   setoranMap: Record<string, SetoranRecord>;
   onToggleSetoranBab: (studentId: string, babCode: string) => void;
-  onStartPracticeForStudent: (student: Student) => void;
   onAddStudent: (newStudent: Omit<Student, 'id'>) => void;
   onUpdateStudentGroup: (
     studentId: string,
@@ -40,7 +38,6 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
   attempts,
   setoranMap,
   onToggleSetoranBab,
-  onStartPracticeForStudent,
   onAddStudent,
   onUpdateStudentGroup,
   studentPasswords = {},
@@ -278,14 +275,6 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
                           className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                         >
                           <ArrowLeftRight className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onStartPracticeForStudent(st)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors whitespace-nowrap shrink-0"
-                        >
-                          <Play className="w-3 h-3" />
-                          Ujian
                         </button>
                       </div>
                     </td>

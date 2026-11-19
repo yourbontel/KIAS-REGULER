@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Clock,
   Eye,
+  Lock,
   Play,
   RotateCcw,
 } from 'lucide-react';
@@ -16,12 +17,18 @@ import {
 } from '../data/students';
 import { getBabsForClass } from '../data/shorofData';
 import { summarizeBabAttempts } from '../utils/babScores';
+import {
+  DEFAULT_EXAM_ACCESS,
+  type ExamAccessConfig,
+  isBabOpen,
+} from '../utils/examAccess';
 import { buildReviewUrl } from '../utils/examSession';
 
 interface StudentProgressViewProps {
   student: Student;
   attempts: QuizAttempt[];
   setoran?: SetoranRecord;
+  examAccess?: ExamAccessConfig;
   onStartBabExam: (babId: string) => void;
   onLoadAttemptReview?: (attemptId: string) => Promise<QuizAttemptReviewItem[] | null>;
 }
@@ -38,6 +45,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
   student,
   attempts,
   setoran,
+  examAccess = DEFAULT_EXAM_ACCESS,
   onStartBabExam,
 }) => {
   const openAttemptReview = (attempt: QuizAttempt) => {
@@ -194,32 +202,39 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
                     {row.latestScore !== null ? row.latestScore : '—'}
                   </td>
                   <td className="py-3 px-5 text-right">
-                    <button
-                      type="button"
-                      onClick={() => onStartBabExam(row.bab.id)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
-                        row.attemptCount > 0
-                          ? 'bg-slate-900 hover:bg-slate-800 text-white'
-                          : 'bg-emerald-700 hover:bg-emerald-800 text-white'
-                      }`}
-                    >
-                      {row.summary.sectioned ? (
-                        <>
-                          <Play className="w-3 h-3" />
-                          Pilih Bagian
-                        </>
-                      ) : row.attemptCount > 0 ? (
-                        <>
-                          <RotateCcw className="w-3 h-3" />
-                          Ulangi
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-3 h-3" />
-                          Kerjakan
-                        </>
-                      )}
-                    </button>
+                    {!isBabOpen(examAccess, row.bab.id) ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-400 border border-slate-200 whitespace-nowrap">
+                        <Lock className="w-3 h-3" />
+                        Ditutup
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onStartBabExam(row.bab.id)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
+                          row.attemptCount > 0
+                            ? 'bg-slate-900 hover:bg-slate-800 text-white'
+                            : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                        }`}
+                      >
+                        {row.summary.sectioned ? (
+                          <>
+                            <Play className="w-3 h-3" />
+                            Pilih Bagian
+                          </>
+                        ) : row.attemptCount > 0 ? (
+                          <>
+                            <RotateCcw className="w-3 h-3" />
+                            Ulangi
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-3 h-3" />
+                            Kerjakan
+                          </>
+                        )}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

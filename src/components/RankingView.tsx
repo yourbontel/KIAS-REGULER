@@ -21,7 +21,7 @@ import {
   StudentClass,
   StudentGender,
 } from '../data/students';
-import { ALL_SHOROF_BABS, ShorofBab, getBabsForClass } from '../data/shorofData';
+import { ShorofBab, getBabsForClass } from '../data/shorofData';
 import { SECTION_NUMBERS } from '../utils/babScores';
 import {
   RankedStudentEntry,
@@ -35,6 +35,8 @@ interface RankingViewProps {
   setoranMap: Record<string, SetoranRecord>;
   loggedInStudent?: Student;
   isSuperadmin?: boolean;
+  selectedClass?: StudentClass;
+  onChangeClass?: (kelas: StudentClass) => void;
 }
 
 function getInitials(name: string): string {
@@ -89,17 +91,31 @@ export const RankingView: React.FC<RankingViewProps> = ({
   setoranMap,
   loggedInStudent,
   isSuperadmin = false,
+  selectedClass,
+  onChangeClass,
 }) => {
-  const [kelasFilter, setKelasFilter] = useState<'Semua' | StudentClass>(
-    loggedInStudent?.kelas ?? 'Reguler 1'
+  const [kelasFilter, setKelasFilter] = useState<StudentClass>(
+    loggedInStudent?.kelas ?? selectedClass ?? 'Reguler 1'
   );
   const [genderFilter, setGenderFilter] = useState<'Semua' | StudentGender>('Semua');
   const [selectedBabId, setSelectedBabId] = useState<'all' | string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [babMenuOpen, setBabMenuOpen] = useState(false);
   const babDropdownRef = useRef<HTMLDivElement>(null);
-  const effectiveKelas = !isSuperadmin && loggedInStudent ? loggedInStudent.kelas : kelasFilter;
+  const effectiveKelas: StudentClass =
+    !isSuperadmin && loggedInStudent ? loggedInStudent.kelas : kelasFilter;
   const effectiveGender = !isSuperadmin && loggedInStudent ? loggedInStudent.gender : genderFilter;
+
+  useEffect(() => {
+    if (!isSuperadmin || !selectedClass || selectedClass === kelasFilter) return;
+    setKelasFilter(selectedClass);
+    if (selectedBabId !== 'all') {
+      const nextBabs = getBabsForClass(selectedClass);
+      if (!nextBabs.some((b) => b.id === selectedBabId)) {
+        setSelectedBabId('all');
+      }
+    }
+  }, [isSuperadmin, selectedClass, kelasFilter, selectedBabId]);
 
   useEffect(() => {
     if (!babMenuOpen) return;
@@ -122,10 +138,10 @@ export const RankingView: React.FC<RankingViewProps> = ({
     };
   }, [babMenuOpen]);
 
-  const availableBabs = useMemo(() => {
-    if (effectiveKelas === 'Semua') return ALL_SHOROF_BABS;
-    return getBabsForClass(effectiveKelas);
-  }, [effectiveKelas]);
+  const availableBabs = useMemo(
+    () => getBabsForClass(effectiveKelas),
+    [effectiveKelas]
+  );
 
   const groupedAvailableBabs = useMemo(() => {
     const groups: { kategori: ShorofBab['kategori']; items: ShorofBab[] }[] = [];
@@ -137,11 +153,11 @@ export const RankingView: React.FC<RankingViewProps> = ({
     return groups;
   }, [availableBabs]);
 
-  const handleChangeKelas = (nextKelas: 'Semua' | StudentClass) => {
+  const handleChangeKelas = (nextKelas: StudentClass) => {
     setKelasFilter(nextKelas);
+    onChangeClass?.(nextKelas);
     if (selectedBabId !== 'all') {
-      const nextBabs =
-        nextKelas === 'Semua' ? ALL_SHOROF_BABS : getBabsForClass(nextKelas);
+      const nextBabs = getBabsForClass(nextKelas);
       if (!nextBabs.some((b) => b.id === selectedBabId)) {
         setSelectedBabId('all');
       }
@@ -488,7 +504,9 @@ export const RankingView: React.FC<RankingViewProps> = ({
             <div>
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <Trophy className="w-4 h-4 text-emerald-700" />
-                {isSuperadmin ? 'Papan Peringkat Siswa' : 'Peringkat Kelas (5 Besar)'}
+                {isSuperadmin
+                  ? `Papan Peringkat Siswa ${effectiveKelas}`
+                  : `Peringkat Kelas ${effectiveKelas} (5 Besar)`}
                 {activeBabMeta ? ` · ${activeBabMeta.kode}` : ' · Keseluruhan'}
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -524,13 +542,12 @@ export const RankingView: React.FC<RankingViewProps> = ({
               {isSuperadmin && <div
                 role="group"
                 aria-label="Filter Kelas Ranking"
-                className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/80"
+                className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/80"
               >
                 {(
                   [
                     { value: 'Reguler 1', label: 'Reguler 1' },
                     { value: 'Reguler 2', label: 'Reguler 2' },
-                    { value: 'Semua', label: 'Semua' },
                   ] as const
                 ).map((opt) => {
                   const active = kelasFilter === opt.value;

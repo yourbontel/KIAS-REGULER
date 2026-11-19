@@ -4,11 +4,13 @@ import type {
   SetoranRecord,
   Student,
 } from '../data/students';
+import type { ExamAccessConfig } from './examAccess';
 
 export interface StudentDataSnapshot {
   attempts: QuizAttempt[];
   setoranMap: Record<string, SetoranRecord>;
   studentRecords: Student[];
+  examAccess?: ExamAccessConfig;
 }
 
 export async function loadStudentData(): Promise<StudentDataSnapshot> {
@@ -94,4 +96,15 @@ export async function upsertStudentInDb(
 export async function clearAttemptsInDb(adminToken: string | null): Promise<string | null> {
   const { error } = await postStudentData({ action: 'clear-attempts' }, adminToken);
   return error;
+}
+
+export async function updateExamAccessInDb(
+  config: ExamAccessConfig,
+  adminToken: string | null
+): Promise<{ examAccess: ExamAccessConfig | null; error: string | null }> {
+  const { data, error } = await postStudentData<{
+    ok: boolean;
+    examAccess: ExamAccessConfig;
+  }>({ action: 'update-exam-access', config }, adminToken);
+  return { examAccess: data?.examAccess ?? null, error };
 }

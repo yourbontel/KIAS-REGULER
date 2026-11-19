@@ -16,6 +16,7 @@ import { ClassRecapView } from './components/ClassRecapView';
 import { LoginView } from './components/LoginView';
 import { StudentProgressView } from './components/StudentProgressView';
 import { RankingView } from './components/RankingView';
+import { ExamAccessControlView } from './components/ExamAccessControlView';
 import { AccountModal } from './components/AccountModal';
 import {
   AUTH_STORAGE_KEYS,
@@ -26,6 +27,10 @@ import {
   getInitialSession,
   getInitialSuperadminConfig,
 } from './utils/auth';
+import {
+  DEFAULT_EXAM_ACCESS,
+  type ExamAccessConfig,
+} from './utils/examAccess';
 import { loadStudentCredentialStatus, loadSuperadminUsername, requestStudentCredential, verifySuperadmin } from './utils/studentCredentials';
 import {
   clearAttemptsInDb,
@@ -33,10 +38,11 @@ import {
   loadStudentData,
   saveQuizAttemptToDb,
   toggleSetoranInDb,
+  updateExamAccessInDb,
   upsertStudentInDb,
 } from './utils/studentData';
 
-type ActiveSection = 'practice' | 'roster' | 'recap' | 'my_progress' | 'ranking';
+type ActiveSection = 'practice' | 'roster' | 'recap' | 'access' | 'my_progress' | 'ranking';
 
 const STORAGE_KEYS = {
   STUDENTS: 'albarkah_shorof_students_v1',
@@ -59,7 +65,10 @@ function mergeStudentRecords(base: Student[], dbRecords: Student[]): Student[] {
 }
 
 export default function App() {
-  const [activeSection, setActiveSection] = useState<ActiveSection>('practice');
+  const [session, setSession] = useState<AuthSession | null>(() => getInitialSession());
+  const [activeSection, setActiveSection] = useState<ActiveSection>(() =>
+    getInitialSession()?.role === 'superadmin' ? 'recap' : 'practice'
+  );
 
   // Authentication & Credentials State
   const [superadminConfig, setSuperadminConfig] = useState<SuperadminConfig>(() =>
@@ -67,9 +76,10 @@ export default function App() {
   );
   const [superadminReady, setSuperadminReady] = useState(false);
   const [studentPasswords, setStudentPasswords] = useState<StudentPasswordMap>({});
-  const [session, setSession] = useState<AuthSession | null>(() => getInitialSession());
   const [adminToken, setAdminToken] = useState<string | null>(() => getInitialAdminToken());
   const [dbSyncError, setDbSyncError] = useState<string | null>(null);
+  const [examAccess, setExamAccess] = useState<ExamAccessConfig>(DEFAULT_EXAM_ACCESS);
+  const [examAccessSaving, setExamAccessSaving] = useState(false);
   const [legacyImported, setLegacyImported] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [requestedBabId, setRequestedBabId] = useState<string | null>(null);
@@ -198,6 +208,9 @@ export default function App() {
         });
         setSetoranMap(data.setoranMap);
         setStudents(mergeStudentRecords(INITIAL_STUDENTS, data.studentRecords));
+        if (data.examAccess) {
+          setExamAccess(data.examAccess);
+        }
         setDbSyncError(null);
       } else {
         console.error(dataResult.reason);
@@ -471,27 +484,6 @@ export default function App() {
     }
   };
 
-  const handleStartPracticeForStudent = (student: Student) => {
-    setFilterClass(student.kelas);
-    setFilterGender(student.gender);
-    setSelectedStudentId(student.id);
-    setActiveSection('practice');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleJumpToCohortPractice = (kelas: StudentClass, gender: StudentGender) => {
-    setFilterClass(kelas);
-    setFilterGender(gender);
-    const firstInCohort = students.find(
-      (s) => s.kelas === kelas && s.gender === gender
-    );
-    if (firstInCohort) {
-      setSelectedStudentId(firstInCohort.id);
-    }
-    setActiveSection('practice');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const handleAddStudent = async (newSt: Omit<Student, 'id'>) => {
     const created: Student = {
       ...newSt,
@@ -542,18 +534,22 @@ export default function App() {
     setAttempts([]);
   };
 
-  const handleRandomStudentQuickAction = () => {
-    const cohortPool = students.filter(
-      (s) => s.kelas === filterClass && s.gender === filterGender
-    );
-    const targetPool = cohortPool.length > 0 ? cohortPool : students;
-    const picked = targetPool[Math.floor(Math.random() * targetPool.length)];
-    if (picked) {
-      setFilterClass(picked.kelas);
-      setFilterGender(picked.gender);
-      setSelectedStudentId(picked.id);
-      setActiveSection('practice');
+  const handleUpdateExamAccess = async (nextConfig: ExamAccessConfig) => {
+    const previous = examAccess;
+    setExamAccess(nextConfig);
+    setExamAccessSaving(true);
+    const { examAccess: saved, error } = await updateExamAccessInDb(nextConfig, adminToken);
+    setExamAccessSaving(false);
+    if (error) {
+      setExamAccess(previous);
+      setDbSyncError(error);
+      window.alert(error);
+      return;
     }
+    if (saved) {
+      setExamAccess(saved);
+    }
+    setDbSyncError(null);
   };
 
   // Counts for the 4 separated groups
@@ -586,8 +582,8 @@ export default function App() {
   const navItems: { id: ActiveSection; label: string; mobileLabel: string }[] = isSuperadmin
     ? [
         { id: 'recap', label: 'Rekap Nilai Per Bab', mobileLabel: 'Rekap Nilai' },
+        { id: 'access', label: 'Akses Buka Soal', mobileLabel: 'Akses Soal' },
         { id: 'ranking', label: 'Peringkat Siswa', mobileLabel: 'Peringkat' },
-        { id: 'practice', label: 'Ujian Per Bab', mobileLabel: 'Ujian Bab' },
         { id: 'roster', label: 'Data Siswa & Kelas', mobileLabel: 'Data Siswa' },
       ]
     : [
@@ -595,6 +591,9 @@ export default function App() {
         { id: 'my_progress', label: 'Nilai Saya', mobileLabel: 'Nilai Saya' },
         { id: 'ranking', label: 'Peringkat Kelas', mobileLabel: 'Peringkat' },
       ];
+
+  const currentSection: ActiveSection =
+    isSuperadmin && activeSection === 'practice' ? 'recap' : activeSection;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900">
@@ -606,7 +605,7 @@ export default function App() {
             href="#top"
             onClick={(e) => {
               e.preventDefault();
-              setActiveSection('practice');
+              setActiveSection(isSuperadmin ? 'recap' : 'practice');
             }}
             className="font-display text-base sm:text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap shrink-0"
           >
@@ -621,7 +620,7 @@ export default function App() {
                 type="button"
                 onClick={() => setActiveSection(item.id)}
                 className={`py-1 transition-colors whitespace-nowrap shrink-0 border-b-2 ${
-                  activeSection === item.id
+                  currentSection === item.id
                     ? 'text-slate-900 border-emerald-700 font-semibold'
                     : 'border-transparent hover:text-slate-900'
                 }`}
@@ -631,7 +630,7 @@ export default function App() {
             ))}
           </nav>
 
-          {/* Zone 3: User badge, quick action (Superadmin), password, and logout */}
+          {/* Zone 3: User badge, password, and logout */}
           <div className="flex items-center gap-2 shrink-0">
             <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 text-xs font-semibold text-slate-800 max-w-[180px]">
               {isSuperadmin ? (
@@ -643,16 +642,6 @@ export default function App() {
                 {isSuperadmin ? 'Superadmin' : loggedInStudent?.name}
               </span>
             </div>
-
-            {isSuperadmin && (
-              <button
-                type="button"
-                onClick={handleRandomStudentQuickAction}
-                className="hidden lg:inline-flex px-3.5 py-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg transition-colors whitespace-nowrap shrink-0"
-              >
-                Undi Kuis Siswa
-              </button>
-            )}
 
             <button
               type="button"
@@ -685,7 +674,7 @@ export default function App() {
             type="button"
             onClick={() => setActiveSection(item.id)}
             className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 ${
-              activeSection === item.id
+              currentSection === item.id
                 ? 'bg-slate-900 text-white'
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
@@ -710,15 +699,17 @@ export default function App() {
                 Program Bahasa Arab Al-Barkah · Tashrif Istilahi &amp; Lughawi
               </div>
               <h1 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-                {activeSection === 'practice' &&
+                {currentSection === 'practice' &&
                   'Ujian Shorof Per Bab (12 Bagian: 6 Tashrif Istilahi + 6 Tashrif Lughawi)'}
-                {activeSection === 'roster' &&
+                {currentSection === 'roster' &&
                   'Daftar Siswa Terpisah: Reguler 1 & 2 (Ikhwan & Akhwat)'}
-                {activeSection === 'recap' &&
+                {currentSection === 'recap' &&
                   'Rekapitulasi Nilai Ujian Per Bab Siswa'}
-                {activeSection === 'my_progress' &&
+                {currentSection === 'access' &&
+                  'Kontrol Akses Buka & Tutup Soal Ujian'}
+                {currentSection === 'my_progress' &&
                   'Rekap Nilai Ujian Per Bab Saya'}
-                {activeSection === 'ranking' &&
+                {currentSection === 'ranking' &&
                   'Papan Peringkat & Prestasi Siswa'}
               </h1>
             </div>
@@ -819,7 +810,7 @@ export default function App() {
         </section>
 
         {/* Active Section Body */}
-        {activeSection === 'practice' && (
+        {!isSuperadmin && currentSection === 'practice' && (
           <BabExamView
             students={students}
             selectedStudentId={selectedStudentId}
@@ -829,6 +820,7 @@ export default function App() {
             filterGender={filterGender}
             onChangeGender={setFilterGender}
             attempts={attempts}
+            examAccess={examAccess}
             onSaveAttempt={handleSaveAttempt}
             onLoadAttemptReview={handleLoadAttemptReview}
             lockedStudent={loggedInStudent}
@@ -837,13 +829,20 @@ export default function App() {
           />
         )}
 
-        {isSuperadmin && activeSection === 'roster' && (
+        {isSuperadmin && currentSection === 'access' && (
+          <ExamAccessControlView
+            examAccess={examAccess}
+            onUpdateExamAccess={handleUpdateExamAccess}
+            saving={examAccessSaving}
+          />
+        )}
+
+        {isSuperadmin && currentSection === 'roster' && (
           <StudentRosterView
             students={students}
             attempts={attempts}
             setoranMap={setoranMap}
             onToggleSetoranBab={handleToggleSetoranBab}
-            onStartPracticeForStudent={handleStartPracticeForStudent}
             onAddStudent={handleAddStudent}
             onUpdateStudentGroup={handleUpdateStudentGroup}
             studentPasswords={studentPasswords}
@@ -851,21 +850,21 @@ export default function App() {
           />
         )}
 
-        {isSuperadmin && activeSection === 'recap' && (
+        {isSuperadmin && currentSection === 'recap' && (
           <ClassRecapView
             students={students}
             attempts={attempts}
             setoranMap={setoranMap}
-            onJumpToCohortPractice={handleJumpToCohortPractice}
             onClearHistory={handleClearHistory}
           />
         )}
 
-        {!isSuperadmin && loggedInStudent && activeSection === 'my_progress' && (
+        {!isSuperadmin && loggedInStudent && currentSection === 'my_progress' && (
           <StudentProgressView
             student={loggedInStudent}
             attempts={attempts}
             setoran={setoranMap[loggedInStudent.id]}
+            examAccess={examAccess}
             onLoadAttemptReview={handleLoadAttemptReview}
             onStartBabExam={(babId) => {
               setRequestedBabId(babId);
@@ -874,13 +873,15 @@ export default function App() {
           />
         )}
 
-        {activeSection === 'ranking' && (
+        {currentSection === 'ranking' && (
           <RankingView
             students={students}
             attempts={attempts}
             setoranMap={setoranMap}
             loggedInStudent={loggedInStudent}
             isSuperadmin={isSuperadmin}
+            selectedClass={filterClass}
+            onChangeClass={setFilterClass}
           />
         )}
       </main>
@@ -892,24 +893,8 @@ export default function App() {
             Madrasah Shorof Al-Barkah · Sistem Ujian Shorof Per Bab Reguler 1 &amp; Reguler 2
           </div>
           <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => setActiveSection('practice')}
-              className="hover:text-slate-900 transition-colors"
-            >
-              Ujian Per Bab
-            </button>
-            <span aria-hidden="true">·</span>
-            <button
-              type="button"
-              onClick={() => setActiveSection('ranking')}
-              className="hover:text-slate-900 transition-colors"
-            >
-              Peringkat Siswa
-            </button>
             {isSuperadmin ? (
               <>
-                <span aria-hidden="true">·</span>
                 <button
                   type="button"
                   onClick={() => setActiveSection('recap')}
@@ -917,9 +902,40 @@ export default function App() {
                 >
                   Rekap Nilai Per Bab
                 </button>
+                <span aria-hidden="true">·</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('access')}
+                  className="hover:text-slate-900 transition-colors"
+                >
+                  Akses Buka Soal
+                </button>
+                <span aria-hidden="true">·</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('ranking')}
+                  className="hover:text-slate-900 transition-colors"
+                >
+                  Peringkat Siswa
+                </button>
+                <span aria-hidden="true">·</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('roster')}
+                  className="hover:text-slate-900 transition-colors"
+                >
+                  Data Siswa &amp; Kelas
+                </button>
               </>
             ) : (
               <>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('practice')}
+                  className="hover:text-slate-900 transition-colors"
+                >
+                  Ujian Per Bab
+                </button>
                 <span aria-hidden="true">·</span>
                 <button
                   type="button"
@@ -927,6 +943,14 @@ export default function App() {
                   className="hover:text-slate-900 transition-colors"
                 >
                   Nilai Saya
+                </button>
+                <span aria-hidden="true">·</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('ranking')}
+                  className="hover:text-slate-900 transition-colors"
+                >
+                  Peringkat Kelas
                 </button>
               </>
             )}

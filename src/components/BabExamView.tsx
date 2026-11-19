@@ -6,6 +6,7 @@ import {
   ChevronDown,
   Clock,
   Eye,
+  Lock,
   Play,
   RotateCcw,
   Search,
@@ -26,6 +27,12 @@ import {
   getExamQuestionCount,
 } from '../utils/quizGenerator';
 import { BabScoreSummary, summarizeBabAttempts } from '../utils/babScores';
+import {
+  DEFAULT_EXAM_ACCESS,
+  type ExamAccessConfig,
+  isBabOpen,
+  isSectionOpen,
+} from '../utils/examAccess';
 import { buildExamUrl, buildReviewUrl } from '../utils/examSession';
 
 interface BabExamViewProps {
@@ -37,6 +44,7 @@ interface BabExamViewProps {
   filterGender: StudentGender;
   onChangeGender: (g: StudentGender) => void;
   attempts: QuizAttempt[];
+  examAccess?: ExamAccessConfig;
   onSaveAttempt: (attempt: Omit<QuizAttempt, 'id' | 'timestamp'>) => void;
   onLoadAttemptReview?: (attemptId: string) => Promise<QuizAttemptReviewItem[] | null>;
   lockedStudent?: Student;
@@ -53,6 +61,7 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
   filterGender,
   onChangeGender,
   attempts,
+  examAccess = DEFAULT_EXAM_ACCESS,
   lockedStudent,
   requestedBabId,
   onClearRequestedBab,
@@ -124,6 +133,9 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
   ]);
 
   const startExamForBab = (bab: ShorofBab, sectionNumber?: number) => {
+    if (!isSectionOpen(examAccess, bab.id, sectionNumber ?? null)) {
+      return;
+    }
     if (
       bab.sectionedExam &&
       sectionNumber &&
@@ -399,6 +411,12 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                                   : `${stat.completedSections}/${stat.totalSections} Bagian selesai`}
                               </span>
                             )}
+                            {!isBabOpen(examAccess, bab.id) && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                                <Lock className="w-3 h-3" />
+                                Akses Ditutup
+                              </span>
+                            )}
                           </div>
                           <div>
                             <div className="font-arabic text-2xl font-bold text-slate-900">
@@ -553,6 +571,15 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                                             <Eye className="w-3.5 h-3.5" />
                                             Lihat Jawaban
                                           </button>
+                                        ) : !isSectionOpen(examAccess, bab.id, sectionNo) ? (
+                                          <button
+                                            type="button"
+                                            disabled
+                                            className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-lg bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                          >
+                                            <Lock className="w-3.5 h-3.5" />
+                                            Soal Ditutup
+                                          </button>
                                         ) : (
                                           <button
                                             type="button"
@@ -653,27 +680,38 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                       )}
 
                       <div className="flex flex-col gap-2">
-                        <button
-                          type="button"
-                          onClick={() => startExamForBab(bab)}
-                          className={`w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-semibold rounded-lg transition-colors ${
-                            hasAttempt
-                              ? 'bg-slate-900 hover:bg-slate-800 text-white'
-                              : 'bg-emerald-700 hover:bg-emerald-800 text-white'
-                          }`}
-                        >
-                          {hasAttempt ? (
-                            <>
-                              <RotateCcw className="w-3.5 h-3.5" />
-                              Ujian Ulang {bab.kode}
-                            </>
-                          ) : (
-                            <>
-                              <Play className="w-3.5 h-3.5" />
-                              Mulai Ujian {bab.kode}
-                            </>
-                          )}
-                        </button>
+                        {!isBabOpen(examAccess, bab.id) ? (
+                          <button
+                            type="button"
+                            disabled
+                            className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-semibold rounded-lg bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                          >
+                            <Lock className="w-3.5 h-3.5" />
+                            Soal Ditutup Admin
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => startExamForBab(bab)}
+                            className={`w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-semibold rounded-lg transition-colors ${
+                              hasAttempt
+                                ? 'bg-slate-900 hover:bg-slate-800 text-white'
+                                : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                            }`}
+                          >
+                            {hasAttempt ? (
+                              <>
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                Ujian Ulang {bab.kode}
+                              </>
+                            ) : (
+                              <>
+                                <Play className="w-3.5 h-3.5" />
+                                Mulai Ujian {bab.kode}
+                              </>
+                            )}
+                          </button>
+                        )}
                         {hasAttempt && (() => {
                           const latestAttempt = studentAttempts.find(
                             (a) => a.babId === bab.id

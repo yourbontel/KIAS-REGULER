@@ -72,6 +72,13 @@ function ensureTables(): Promise<void> {
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
       `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS exam_access_config (
+          id TEXT PRIMARY KEY,
+          config JSONB NOT NULL DEFAULT '{"babs":{},"sections":{}}'::jsonb,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
     })().catch((err) => {
       tablesReadyPromise = null;
       throw err;
@@ -131,6 +138,42 @@ function validateStudentPayload(raw: unknown) {
     kota: kota.trim() || '-',
     catatan: typeof catatan === 'string' && catatan.trim() ? catatan.trim() : null,
   };
+}
+
+function sanitizeExamAccess(raw: unknown) {
+  const babs: Record<string, boolean> = {};
+  const sections: Record<string, boolean> = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { babs, sections };
+  }
+  const obj = raw as Record<string, unknown>;
+  if (obj.babs && typeof obj.babs === 'object' && !Array.isArray(obj.babs)) {
+    for (const [k, v] of Object.entries(obj.babs)) {
+      if (typeof k === 'string' && k.length <= 128 && typeof v === 'boolean') {
+        babs[k] = v;
+      }
+    }
+  }
+  if (obj.sections && typeof obj.sections === 'object' && !Array.isArray(obj.sections)) {
+    for (const [k, v] of Object.entries(obj.sections)) {
+      if (typeof k === 'string' && k.length <= 140 && typeof v === 'boolean') {
+        sections[k] = v;
+      }
+    }
+  }
+  return { babs, sections };
+}
+
+function isExamOpenServer(
+  access: { babs: Record<string, boolean>; sections: Record<string, boolean> },
+  babId: string,
+  sectionNumber: number | null
+): boolean {
+  if (access.babs[babId] === false) return false;
+  if (sectionNumber !== null && access.sections[`${babId}:${sectionNumber}`] === false) {
+    return false;
+  }
+  return true;
 }
 
 function sanitizeReviewItems(raw: unknown) {
@@ -213,7 +256,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      const [attemptResult, setoranResult, studentResult] = await Promise.all([
+      const [attemptResult, setoranResult, studentResult, accessResult] = await Promise.all([
         pool.query(`
           SELECT
             id, student_id, timestamp, bab_id, bab_label, section_number,
@@ -230,6 +273,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           SELECT id, name, kelas, gender, kota, catatan
           FROM student_records
           ORDER BY updated_at ASC, id ASC
+        `),
+        pool.query(`
+          SELECT config
+          FROM exam_access_config
+          WHERE id = 'global'
+          LIMIT 1
         `),
       ]);
 
@@ -274,7 +323,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ...(row.catatan ? { catatan: row.catatan } : {}),
       }));
 
-      return res.status(200).json({ attempts, setoranMap, studentRecords });
+      const examAccess = sanitizeExamAccess(accessResult.rows[0]?.config);
+
+      return res.status(200).json({ attempts, setoranMap, studentRecords, examAccess });
     } catch (error) {
       console.error('Failed to load student data', error);
       return res.status(500).json({ error: 'Gagal memuat data nilai & setoran dari database.' });
@@ -343,6 +394,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         typeof sectionNumber === 'number' && Number.isInteger(sectionNumber)
           ? sectionNumber
           : null;
+
+      const accessRow = await pool.query(
+        "SELECT config FROM exam_access_config WHERE id = 'global' LIMIT 1"
+      );
+      const currentAccess = sanitizeExamAccess(accessRow.rows[0]?.config);
+      if (!isExamOpenServer(currentAccess, babId, cleanSection)) {
+        return res.status(403).json({
+          error: 'Akses soal ini sedang ditutup oleh Superadmin.',
+        });
+      }
 
       if (cleanSection !== null) {
         const existing = await pool.query(
@@ -469,6 +530,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (action === 'clear-attempts') {
       await pool.query('DELETE FROM quiz_attempts');
       return res.status(200).json({ ok: true });
+    }
+
+    if (action === 'update-exam-access') {
+      const nextAccess = sanitizeExamAccess(body.config);
+      await pool.query(
+        `
+        INSERT INTO exam_access_config (id, config, updated_at)
+        VALUES ('global', $1::jsonb, NOW())
+        ON CONFLICT (id)
+        DO UPDATE SET config = EXCLUDED.config, updated_at = NOW()
+        `,
+        [JSON.stringify(nextAccess)]
+      );
+      return res.status(200).json({ ok: true, examAccess: nextAccess });
     }
 
     return res.status(400).json({ error: 'Aksi tidak dikenal.' });

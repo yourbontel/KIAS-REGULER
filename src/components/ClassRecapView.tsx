@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Download, Play, Search, Trash2 } from 'lucide-react';
+import { Download, Search, Trash2 } from 'lucide-react';
 import {
   PASSING_SCORE,
   QuizAttempt,
@@ -15,7 +15,6 @@ interface ClassRecapViewProps {
   students: Student[];
   attempts: QuizAttempt[];
   setoranMap: Record<string, SetoranRecord>;
-  onJumpToCohortPractice: (kelas: StudentClass, gender: StudentGender) => void;
   onClearHistory: () => void;
 }
 
@@ -54,7 +53,6 @@ export const ClassRecapView: React.FC<ClassRecapViewProps> = ({
   students,
   attempts,
   setoranMap,
-  onJumpToCohortPractice,
   onClearHistory,
 }) => {
   const [matrixClass, setMatrixClass] = useState<StudentClass>('Reguler 1');
@@ -141,7 +139,7 @@ export const ClassRecapView: React.FC<ClassRecapViewProps> = ({
             Ringkasan 4 Kelompok Belajar (Reguler 1 &amp; 2 · Ikhwan / Akhwat)
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Klik tombol pada salah satu kelompok untuk membuka simulasi ujian per bab bagi kelompok tersebut.
+            Ringkasan jumlah siswa, penyelesaian ujian, rata-rata nilai, dan setoran lisan per kelompok.
           </p>
         </div>
 
@@ -209,15 +207,6 @@ export const ClassRecapView: React.FC<ClassRecapViewProps> = ({
                     </div>
                   </div>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => onJumpToCohortPractice(c.kelas, c.gender)}
-                  className="mt-5 w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-semibold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors whitespace-nowrap shrink-0"
-                >
-                  <Play className="w-3.5 h-3.5" />
-                  Ujian Kelompok Ini
-                </button>
               </div>
             );
           })}
