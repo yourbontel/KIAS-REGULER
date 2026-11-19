@@ -747,6 +747,135 @@ const MAZID1_BAB1: ShorofBab = {
   ],
 };
 
+function buildAfalaVerb(
+  id: string,
+  rootLetters: [string, string, string],
+  artiDasar: string,
+  mashdar: string
+): MauzunVerb {
+  const [f, a, l] = rootLetters;
+  if (f === 'أ' && l === 'ن') {
+    return {
+      id,
+      babId: 'mazid1-bab-3',
+      rootLetters,
+      artiDasar,
+      istilahi: {
+        madhi: 'آمَنَ',
+        mudhari: 'يُؤْمِنُ',
+        mashdar,
+        isim_fail: 'مُؤْمِنٌ',
+        isim_maful: 'مُؤْمَنٌ',
+        fiil_amr: 'آمِنْ',
+        fiil_nahyi: 'لَا تُؤْمِنْ',
+        isim_zaman_makan: 'مُؤْمَنٌ',
+        isim_alat: '—',
+        madhi_majhul: 'أُومِنَ',
+        mudhari_majhul: 'يُؤْمَنُ',
+      },
+      lughawiMadhi: [
+        'آمَنَ', 'آمَنَا', 'آمَنُوا',
+        'آمَنَتْ', 'آمَنَتَا', 'آمَنَّ',
+        'آمَنْتَ', 'آمَنْتُمَا', 'آمَنْتُمْ',
+        'آمَنْتِ', 'آمَنْتُمَا', 'آمَنْتُنَّ',
+        'آمَنْتُ', 'آمَنَّا',
+      ],
+      lughawiMudhari: [
+        'يُؤْمِنُ', 'يُؤْمِنَانِ', 'يُؤْمِنُونَ',
+        'تُؤْمِنُ', 'تُؤْمِنَانِ', 'يُؤْمِنَّ',
+        'تُؤْمِنُ', 'تُؤْمِنَانِ', 'تُؤْمِنُونَ',
+        'تُؤْمِنِينَ', 'تُؤْمِنَانِ', 'تُؤْمِنَّ',
+        'أُومِنُ', 'نُؤْمِنُ',
+      ],
+      lughawiAmr: [
+        'آمِنْ', 'آمِنَا', 'آمِنُوا',
+        'آمِنِي', 'آمِنَا', 'آمِنَّ',
+      ],
+    };
+  }
+
+  const madhiStem = `أَ${f}ْ${a}َ${l}`;
+  const mudhariStem = `${f}ْ${a}ِ${l}`;
+  const amrStem = `أَ${f}ْ${a}ِ${l}`;
+
+  return {
+    id,
+    babId: 'mazid1-bab-3',
+    rootLetters,
+    artiDasar,
+    istilahi: {
+      madhi: `${madhiStem}َ`,
+      mudhari: `يُ${mudhariStem}ُ`,
+      mashdar,
+      isim_fail: `مُ${f}ْ${a}ِ${l}ٌ`,
+      isim_maful: `مُ${f}ْ${a}َ${l}ٌ`,
+      fiil_amr: `${amrStem}ْ`,
+      fiil_nahyi: `لَا تُ${mudhariStem}ْ`,
+      isim_zaman_makan: `مُ${f}ْ${a}َ${l}ٌ`,
+      isim_alat: '—',
+      madhi_majhul: `أُ${f}ْ${a}ِ${l}َ`,
+      mudhari_majhul: `يُ${f}ْ${a}َ${l}ُ`,
+    },
+    lughawiMadhi: [
+      `${madhiStem}َ`, `${madhiStem}َا`, `${madhiStem}ُوا`,
+      `${madhiStem}َتْ`, `${madhiStem}َتَا`, `${madhiStem}ْنَ`,
+      `${madhiStem}ْتَ`, `${madhiStem}ْتُمَا`, `${madhiStem}ْتُمْ`,
+      `${madhiStem}ْتِ`, `${madhiStem}ْتُمَا`, `${madhiStem}ْتُنَّ`,
+      `${madhiStem}ْتُ`, `${madhiStem}ْنَا`,
+    ],
+    lughawiMudhari: [
+      `يُ${mudhariStem}ُ`, `يُ${mudhariStem}َانِ`, `يُ${mudhariStem}ُونَ`,
+      `تُ${mudhariStem}ُ`, `تُ${mudhariStem}َانِ`, `يُ${mudhariStem}ْنَ`,
+      `تُ${mudhariStem}ُ`, `تُ${mudhariStem}َانِ`, `تُ${mudhariStem}ُونَ`,
+      `تُ${mudhariStem}ِينَ`, `تُ${mudhariStem}َانِ`, `تُ${mudhariStem}ْنَ`,
+      `أُ${mudhariStem}ُ`, `نُ${mudhariStem}ُ`,
+    ],
+    lughawiAmr: [
+      `${amrStem}ْ`, `${amrStem}َا`, `${amrStem}ُوا`,
+      `${amrStem}ِي`, `${amrStem}َا`, `${amrStem}ْنَ`,
+    ],
+  };
+}
+
+const MAZID1_BAB3: ShorofBab = {
+  id: 'mazid1-bab-3',
+  kode: 'Mazid 1 · Bab 3',
+  namaBab: "Tsulatsi Mazid +1 Huruf Bab 3 (Af'ala - Yuf'ilu)",
+  kategori: 'Tsulatsi Mazid (+1 Huruf)',
+  wazanAr: 'أَفْعَلَ - يُفْعِلُ',
+  wazanLatin: "Af'ala - Yuf'ilu",
+  kaidahAinFiil: "Tambahan 1 huruf Hamzah Qatha' di awal Fi'il Madhi (bermakna Ta'diyah / Mem-kan)",
+  questionsPerSection: 10,
+  sectionedExam: true,
+  wazanIstilahi: {
+    madhi: 'أَفْعَلَ',
+    mudhari: 'يُفْعِلُ',
+    mashdar: 'إِفْعَالًا',
+    isim_fail: 'مُفْعِلٌ',
+    isim_maful: 'مُفْعَلٌ',
+    fiil_amr: 'أَفْعِلْ',
+    fiil_nahyi: 'لَا تُفْعِلْ',
+    isim_zaman_makan: 'مُفْعَلٌ',
+    isim_alat: '—',
+    madhi_majhul: 'أُفْعِلَ',
+    mudhari_majhul: 'يُفْعَلُ',
+  },
+  mauzunList: [
+    buildAfalaVerb('r1-aslama', ['س', 'ل', 'م'], 'Masuk Islam', 'إِسْلَامًا'),
+    buildAfalaVerb('r1-arsala', ['ر', 'س', 'ل'], 'Mengirim', 'إِرْسَالًا'),
+    buildAfalaVerb('r1-akhlasha', ['خ', 'ل', 'ص'], 'Memurnikan', 'إِخْلَاصًا'),
+    buildAfalaVerb('r1-amana', ['أ', 'م', 'ن'], 'Beriman', 'إِيمَانًا'),
+    buildAfalaVerb('r1-anqadha', ['ن', 'ق', 'ض'], 'Memberatkan', 'إِنْقَاضًا'),
+    buildAfalaVerb('r1-abada', ['ب', 'ع', 'د'], 'Menjauhkan', 'إِبْعَادًا'),
+    buildAfalaVerb('r1-athama', ['ط', 'ع', 'م'], 'Memberi makan', 'إِطْعَامًا'),
+    buildAfalaVerb('r1-azhara', ['ظ', 'ه', 'ر'], 'Menampakkan', 'إِظْهَارًا'),
+    buildAfalaVerb('r1-ashraka', ['ش', 'ر', 'ك'], 'Mempersekutukan', 'إِشْرَاكًا'),
+    buildAfalaVerb('r1-akhraja', ['خ', 'ر', 'ج'], 'Mengeluarkan', 'إِخْرَاجًا'),
+    buildAfalaVerb('r1-akrama', ['ك', 'ر', 'م'], 'Memuliakan', 'إِكْرَامًا'),
+    buildAfalaVerb('r1-ashlaha', ['ص', 'ل', 'ح'], 'Memperbaiki', 'إِصْلَاحًا'),
+  ],
+};
+
 export const SHOROF_BABS_REGULER_1: ShorofBab[] = [
   // 6 Bab Tsulatsi Mujarrod
   R1_BAB1, // Bab 1: فَعَلَ - يَفْعُلُ (12 Mufradat, 60 soal)
@@ -758,12 +887,7 @@ export const SHOROF_BABS_REGULER_1: ShorofBab[] = [
   // 3 Bab Tsulatsi Mazid (+1 Huruf)
   MAZID1_BAB1, // Mazid 1 Bab 1: فَعَّلَ - يُفَعِّلُ (12 Mufradat, 10 soal/Bagian)
   MAZID1_BAB2,
-  cloneReguler2Bab('mazid-1', {
-    id: 'mazid1-bab-3',
-    kode: 'Mazid 1 · Bab 3',
-    namaBab: "Tsulatsi Mazid +1 Huruf Bab 3 (Af'ala - Yuf'ilu)",
-    kategori: 'Tsulatsi Mazid (+1 Huruf)',
-  }),
+  MAZID1_BAB3, // Mazid 1 Bab 3: أَفْعَلَ - يُفْعِلُ (12 Mufradat, 10 soal/Bagian)
   // 4 Bab Tsulatsi Mazid (+2 Huruf)
   MAZID2_BAB1,
   MAZID2_BAB2,
