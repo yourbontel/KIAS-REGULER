@@ -160,7 +160,15 @@ export const RankingView: React.FC<RankingViewProps> = ({
     [students, attempts, setoranMap, effectiveKelas, effectiveGender, selectedBabId]
   );
 
+  const scoredEntries = useMemo(
+    () => fullRankedList.filter((e) => e.rank !== null),
+    [fullRankedList]
+  );
+
   const visibleRows = useMemo(() => {
+    if (!isSuperadmin) {
+      return scoredEntries.slice(0, 5);
+    }
     const q = searchQuery.trim().toLowerCase();
     if (!q) return fullRankedList;
     return fullRankedList.filter(
@@ -168,12 +176,15 @@ export const RankingView: React.FC<RankingViewProps> = ({
         entry.student.name.toLowerCase().includes(q) ||
         entry.student.kota.toLowerCase().includes(q)
     );
-  }, [fullRankedList, searchQuery]);
+  }, [isSuperadmin, scoredEntries, fullRankedList, searchQuery]);
 
-  const scoredEntries = useMemo(
-    () => fullRankedList.filter((e) => e.rank !== null),
-    [fullRankedList]
-  );
+  const pinnedMyRow = useMemo(() => {
+    if (isSuperadmin || !loggedInStudent) return null;
+    if (visibleRows.some((e) => e.student.id === loggedInStudent.id)) {
+      return null;
+    }
+    return fullRankedList.find((e) => e.student.id === loggedInStudent.id) || null;
+  }, [isSuperadmin, loggedInStudent, visibleRows, fullRankedList]);
 
   const topThree = useMemo(() => scoredEntries.slice(0, 3), [scoredEntries]);
 
@@ -237,6 +248,123 @@ export const RankingView: React.FC<RankingViewProps> = ({
     a.download = `Ranking_Shorof_${kelasFilter.replace(/\s+/g, '_')}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const renderStudentRow = (entry: RankedStudentEntry) => {
+    const isMe = loggedInStudent?.id === entry.student.id;
+    const passing = isEntryPassing(entry, selectedBabId);
+    const hasDisplayedScore =
+      selectedBabId === 'all'
+        ? entry.completedBabsCount > 0
+        : entry.selectedBabScore !== null;
+
+    return (
+      <tr
+        key={entry.student.id}
+        className={isMe ? 'bg-emerald-50/70' : 'hover:bg-slate-50/80'}
+      >
+        <td className="py-3 px-4">{renderRankBadge(entry.rank)}</td>
+        <td className="py-3 px-4">
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 border ${
+                entry.student.id.startsWith('demo-')
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : entry.student.gender === 'Ikhwan'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  : 'bg-teal-50 text-teal-800 border-teal-200'
+              }`}
+            >
+              {getInitials(entry.student.name)}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-slate-900 truncate">
+                  {entry.student.name}
+                </span>
+                {isMe && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-700 text-white shrink-0">
+                    Anda
+                  </span>
+                )}
+                {entry.student.id.startsWith('demo-') && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-900 text-white shrink-0">
+                    DEMO
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                <span
+                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                    entry.student.kelas === 'Reguler 1'
+                      ? 'bg-emerald-50 text-emerald-800'
+                      : 'bg-sky-50 text-sky-800'
+                  }`}
+                >
+                  {entry.student.kelas}
+                </span>
+                <span className="text-[11px] text-slate-500">
+                  {entry.student.gender}
+                </span>
+                {entry.student.kota && (
+                  <span className="inline-flex items-center gap-0.5 text-[11px] text-slate-400">
+                    <MapPin className="w-2.5 h-2.5" />
+                    {entry.student.kota}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </td>
+        <td className="py-3 px-4 text-center tabular-nums">
+          <div className="font-semibold text-slate-800">
+            {entry.completedBabsCount} / {entry.totalBabsForClass} Bab
+          </div>
+          <div className="text-[10px] text-slate-400">
+            {entry.passedBabsCount} lulus · {entry.setoranCount} setoran
+          </div>
+        </td>
+        <td className="py-3 px-4 text-right tabular-nums font-semibold text-slate-700">
+          {entry.avgScore !== null ? entry.avgScore : '—'}
+        </td>
+        <td className="py-3 px-4 text-right tabular-nums">
+          {selectedBabId === 'all' ? (
+            <span
+              className={`text-sm font-bold ${
+                entry.completedBabsCount > 0 ? 'text-slate-900' : 'text-slate-300'
+              }`}
+            >
+              {entry.completedBabsCount > 0 ? entry.totalScore : '—'}
+            </span>
+          ) : entry.selectedBabScore !== null ? (
+            <span className="text-sm font-bold text-slate-900">
+              {entry.selectedBabScore}
+            </span>
+          ) : entry.selectedBabPartialSections > 0 ? (
+            <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">
+              {entry.selectedBabPartialSections}/{SECTION_NUMBERS.length} Bagian
+            </span>
+          ) : (
+            <span className="text-slate-300">—</span>
+          )}
+        </td>
+        <td className="py-3 px-4 text-center">
+          {!hasDisplayedScore ? (
+            <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500">
+              Belum Ujian
+            </span>
+          ) : passing ? (
+            <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+              Lulus (KKM {PASSING_SCORE})
+            </span>
+          ) : (
+            <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+              Di Bawah KKM
+            </span>
+          )}
+        </td>
+      </tr>
+    );
   };
 
   return (
@@ -360,7 +488,7 @@ export const RankingView: React.FC<RankingViewProps> = ({
             <div>
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <Trophy className="w-4 h-4 text-emerald-700" />
-                Papan Peringkat Siswa
+                {isSuperadmin ? 'Papan Peringkat Siswa' : 'Peringkat Kelas (5 Besar)'}
                 {activeBabMeta ? ` · ${activeBabMeta.kode}` : ' · Keseluruhan'}
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -373,7 +501,9 @@ export const RankingView: React.FC<RankingViewProps> = ({
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg tabular-nums">
                 <Users className="w-3.5 h-3.5 text-slate-500" />
-                {scoredEntries.length} / {fullRankedList.length} berperingkat
+                {isSuperadmin
+                  ? `${scoredEntries.length} / ${fullRankedList.length} berperingkat`
+                  : 'Menampilkan 5 Besar'}
               </span>
               {isSuperadmin && (
                 <button
@@ -577,27 +707,29 @@ export const RankingView: React.FC<RankingViewProps> = ({
                 )}
               </div>
 
-              {/* Pencarian Siswa */}
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cari nama siswa atau kota..."
-                  className="w-full pl-8 pr-8 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-xl focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    aria-label="Hapus pencarian"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-700"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
+              {/* Pencarian Siswa (Superadmin) */}
+              {isSuperadmin && (
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Cari nama siswa atau kota..."
+                    className="w-full pl-8 pr-8 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-xl focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      aria-label="Hapus pencarian"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-700"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -620,132 +752,28 @@ export const RankingView: React.FC<RankingViewProps> = ({
               {visibleRows.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-10 text-center text-slate-500">
-                    Tidak ada siswa yang sesuai dengan filter pencarian.
+                    {isSuperadmin
+                      ? 'Tidak ada siswa yang sesuai dengan filter pencarian.'
+                      : 'Belum ada siswa yang masuk 5 besar peringkat pada filter ini.'}
                   </td>
                 </tr>
               ) : (
-                visibleRows.map((entry: RankedStudentEntry) => {
-                  const isMe = loggedInStudent?.id === entry.student.id;
-                  const passing = isEntryPassing(entry, selectedBabId);
-                  const hasDisplayedScore =
-                    selectedBabId === 'all'
-                      ? entry.completedBabsCount > 0
-                      : entry.selectedBabScore !== null;
-
-                  return (
-                    <tr
-                      key={entry.student.id}
-                      className={
-                        isMe
-                          ? 'bg-emerald-50/70'
-                          : 'hover:bg-slate-50/80'
-                      }
+                visibleRows.map(renderStudentRow)
+              )}
+              {pinnedMyRow && (
+                <>
+                  <tr className="bg-slate-50/90">
+                    <td
+                      colSpan={6}
+                      className="py-2 px-4 text-[11px] font-semibold text-slate-500 text-center"
                     >
-                      <td className="py-3 px-4">{renderRankBadge(entry.rank)}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 border ${
-                              entry.student.id.startsWith('demo-')
-                                ? 'bg-slate-900 text-white border-slate-900'
-                                : entry.student.gender === 'Ikhwan'
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                : 'bg-teal-50 text-teal-800 border-teal-200'
-                            }`}
-                          >
-                            {getInitials(entry.student.name)}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-semibold text-slate-900 truncate">
-                                {entry.student.name}
-                              </span>
-                              {isMe && (
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-700 text-white shrink-0">
-                                  Anda
-                                </span>
-                              )}
-                              {entry.student.id.startsWith('demo-') && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-900 text-white shrink-0">
-                                  DEMO
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                              <span
-                                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                                  entry.student.kelas === 'Reguler 1'
-                                    ? 'bg-emerald-50 text-emerald-800'
-                                    : 'bg-sky-50 text-sky-800'
-                                }`}
-                              >
-                                {entry.student.kelas}
-                              </span>
-                              <span className="text-[11px] text-slate-500">
-                                {entry.student.gender}
-                              </span>
-                              {entry.student.kota && (
-                                <span className="inline-flex items-center gap-0.5 text-[11px] text-slate-400">
-                                  <MapPin className="w-2.5 h-2.5" />
-                                  {entry.student.kota}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-center tabular-nums">
-                        <div className="font-semibold text-slate-800">
-                          {entry.completedBabsCount} / {entry.totalBabsForClass} Bab
-                        </div>
-                        <div className="text-[10px] text-slate-400">
-                          {entry.passedBabsCount} lulus · {entry.setoranCount} setoran
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-right tabular-nums font-semibold text-slate-700">
-                        {entry.avgScore !== null ? entry.avgScore : '—'}
-                      </td>
-                      <td className="py-3 px-4 text-right tabular-nums">
-                        {selectedBabId === 'all' ? (
-                          <span
-                            className={`text-sm font-bold ${
-                              entry.completedBabsCount > 0
-                                ? 'text-slate-900'
-                                : 'text-slate-300'
-                            }`}
-                          >
-                            {entry.completedBabsCount > 0 ? entry.totalScore : '—'}
-                          </span>
-                        ) : entry.selectedBabScore !== null ? (
-                          <span className="text-sm font-bold text-slate-900">
-                            {entry.selectedBabScore}
-                          </span>
-                        ) : entry.selectedBabPartialSections > 0 ? (
-                          <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">
-                            {entry.selectedBabPartialSections}/{SECTION_NUMBERS.length} Bagian
-                          </span>
-                        ) : (
-                          <span className="text-slate-300">—</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        {!hasDisplayedScore ? (
-                          <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500">
-                            Belum Ujian
-                          </span>
-                        ) : passing ? (
-                          <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            Lulus (KKM {PASSING_SCORE})
-                          </span>
-                        ) : (
-                          <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                            Di Bawah KKM
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
+                      {visibleRows.length > 0
+                        ? 'Peringkat Anda Saat Ini (di luar 5 besar)'
+                        : 'Peringkat Anda Saat Ini'}
+                    </td>
+                  </tr>
+                  {renderStudentRow(pinnedMyRow)}
+                </>
               )}
             </tbody>
           </table>
