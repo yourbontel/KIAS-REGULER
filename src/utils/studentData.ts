@@ -1,4 +1,9 @@
-import type { QuizAttempt, SetoranRecord, Student } from '../data/students';
+import type {
+  QuizAttempt,
+  QuizAttemptReviewItem,
+  SetoranRecord,
+  Student,
+} from '../data/students';
 
 export interface StudentDataSnapshot {
   attempts: QuizAttempt[];
@@ -12,6 +17,24 @@ export async function loadStudentData(): Promise<StudentDataSnapshot> {
     throw new Error('Gagal memuat data nilai siswa dari server.');
   }
   return response.json();
+}
+
+export async function loadAttemptReviewFromDb(
+  attemptId: string
+): Promise<QuizAttemptReviewItem[] | null> {
+  const response = await fetch(
+    `/api/student-data?attemptId=${encodeURIComponent(attemptId)}`,
+    { cache: 'no-store' }
+  );
+  if (!response.ok) {
+    const result = await response.json().catch(() => null);
+    throw new Error(result?.error || 'Gagal memuat rincian jawaban ujian dari server.');
+  }
+  const data = (await response.json()) as {
+    id: string;
+    reviewItems: QuizAttemptReviewItem[] | null;
+  };
+  return Array.isArray(data.reviewItems) ? data.reviewItems : null;
 }
 
 async function postStudentData<T = { ok: boolean }>(

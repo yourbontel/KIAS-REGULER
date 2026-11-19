@@ -1,19 +1,30 @@
-import React, { useMemo } from 'react';
-import { Award, CheckCircle2, Clock, Play, RotateCcw } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import {
+  Award,
+  CheckCircle2,
+  ChevronLeft,
+  Clock,
+  Eye,
+  Play,
+  RotateCcw,
+} from 'lucide-react';
 import {
   PASSING_SCORE,
   QuizAttempt,
+  QuizAttemptReviewItem,
   SetoranRecord,
   Student,
 } from '../data/students';
 import { getBabsForClass } from '../data/shorofData';
 import { summarizeBabAttempts } from '../utils/babScores';
+import { ExamResultReview } from './ExamResultReview';
 
 interface StudentProgressViewProps {
   student: Student;
   attempts: QuizAttempt[];
   setoran?: SetoranRecord;
   onStartBabExam: (babId: string) => void;
+  onLoadAttemptReview?: (attemptId: string) => Promise<QuizAttemptReviewItem[] | null>;
 }
 
 const MODE_LABELS: Record<QuizAttempt['mode'], string> = {
@@ -29,7 +40,56 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
   attempts,
   setoran,
   onStartBabExam,
+  onLoadAttemptReview,
 }) => {
+  const [reviewState, setReviewState] = useState<{
+    attempt: QuizAttempt;
+    items: QuizAttemptReviewItem[] | null;
+    loading: boolean;
+    error: string | null;
+  } | null>(null);
+
+  const openAttemptReview = async (attempt: QuizAttempt) => {
+    const preloaded =
+      attempt.reviewItems && attempt.reviewItems.length > 0
+        ? attempt.reviewItems
+        : null;
+    const shouldFetch =
+      !preloaded && attempt.hasReview !== false && Boolean(onLoadAttemptReview);
+
+    setReviewState({
+      attempt,
+      items: preloaded,
+      loading: shouldFetch,
+      error: null,
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (shouldFetch && onLoadAttemptReview) {
+      try {
+        const loaded = await onLoadAttemptReview(attempt.id);
+        setReviewState((prev) =>
+          prev && prev.attempt.id === attempt.id
+            ? { ...prev, items: loaded, loading: false, error: null }
+            : prev
+        );
+      } catch (err) {
+        setReviewState((prev) =>
+          prev && prev.attempt.id === attempt.id
+            ? {
+                ...prev,
+                loading: false,
+                error:
+                  err instanceof Error
+                    ? err.message
+                    : 'Gagal memuat rincian jawaban ujian.',
+              }
+            : prev
+        );
+      }
+    }
+  };
+
   const myAttempts = useMemo(
     () => attempts.filter((a) => a.studentId === student.id),
     [attempts, student.id]
@@ -66,6 +126,48 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
         )
       : 0;
   const oralSetoranBabs = setoran?.completedBabs || [];
+
+  if (reviewState) {
+    const { attempt, items, loading, error } = reviewState;
+    return (
+      <div className="space-y-6">
+        <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="text-xs text-slate-500">
+              Riwayat Pengerjaan · <strong className="text-slate-700">{student.name}</strong>
+            </div>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
+              {attempt.babLabel}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setReviewState(null)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" />
+            Kembali ke Nilai Saya
+          </button>
+        </div>
+
+        <ExamResultReview
+          title={`Nilai ${attempt.babLabel}`}
+          studentName={student.name}
+          timestamp={attempt.timestamp}
+          score={attempt.score}
+          correctCount={attempt.correctCount}
+          totalQuestions={attempt.totalQuestions}
+          passed={attempt.score >= PASSING_SCORE}
+          reviewItems={items}
+          loadingReview={loading}
+          reviewError={error}
+          onRetryLoadReview={() => void openAttemptReview(attempt)}
+          onBack={() => setReviewState(null)}
+          backLabel="Kembali ke Nilai Saya"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -242,6 +344,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
                   <th className="py-3 px-5">Jenis</th>
                   <th className="py-3 px-5 text-right">Benar</th>
                   <th className="py-3 px-5 text-right">Nilai</th>
+                  <th className="py-3 px-5 text-right">Jawaban</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 text-xs">
@@ -269,6 +372,16 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
                       >
                         {att.score}
                       </span>
+                    </td>
+                    <td className="py-3 px-5 text-right">
+                      <button
+                        type="button"
+                        onClick={() => void openAttemptReview(att)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        Lihat Jawaban
+                      </button>
                     </td>
                   </tr>
                 ))}

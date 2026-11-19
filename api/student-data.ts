@@ -36,8 +36,13 @@ function ensureTables(): Promise<void> {
           score INTEGER NOT NULL,
           correct_count INTEGER NOT NULL,
           total_questions INTEGER NOT NULL,
+          review_items JSONB,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
+      `);
+      await pool.query(`
+        ALTER TABLE quiz_attempts
+        ADD COLUMN IF NOT EXISTS review_items JSONB
       `);
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_quiz_attempts_created_at
@@ -128,15 +133,92 @@ function validateStudentPayload(raw: unknown) {
   };
 }
 
+function sanitizeReviewItems(raw: unknown) {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > 200) return null;
+  const sanitized = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+    const obj = item as Record<string, unknown>;
+    if (
+      typeof obj.questionId !== 'string' ||
+      !obj.questionId ||
+      typeof obj.babKode !== 'string' ||
+      typeof obj.promptId !== 'string' ||
+      typeof obj.arabicHighlight !== 'string' ||
+      typeof obj.selectedOptionId !== 'string' ||
+      typeof obj.correctOptionId !== 'string' ||
+      typeof obj.explanation !== 'string' ||
+      !Array.isArray(obj.options)
+    ) {
+      return null;
+    }
+    const options = [];
+    for (const opt of obj.options) {
+      if (!opt || typeof opt !== 'object' || Array.isArray(opt)) return null;
+      const o = opt as Record<string, unknown>;
+      if (typeof o.id !== 'string' || typeof o.textAr !== 'string') return null;
+      options.push({
+        id: o.id,
+        textAr: o.textAr,
+        ...(typeof o.textSub === 'string' && o.textSub ? { textSub: o.textSub } : {}),
+      });
+    }
+    sanitized.push({
+      questionId: obj.questionId,
+      ...(typeof obj.sectionNumber === 'number' && Number.isInteger(obj.sectionNumber)
+        ? { sectionNumber: obj.sectionNumber }
+        : {}),
+      ...(typeof obj.sectionTitle === 'string' && obj.sectionTitle
+        ? { sectionTitle: obj.sectionTitle }
+        : {}),
+      babKode: obj.babKode,
+      promptId: obj.promptId,
+      arabicHighlight: obj.arabicHighlight,
+      ...(typeof obj.arabicSubtext === 'string' && obj.arabicSubtext
+        ? { arabicSubtext: obj.arabicSubtext }
+        : {}),
+      options,
+      selectedOptionId: obj.selectedOptionId,
+      correctOptionId: obj.correctOptionId,
+      explanation: obj.explanation,
+    });
+  }
+  return sanitized;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'GET') {
     try {
       await ensureTables();
+
+      const requestedAttemptId =
+        typeof req.query?.attemptId === 'string' ? req.query.attemptId.trim() : '';
+      if (requestedAttemptId) {
+        if (requestedAttemptId.length > 128) {
+          return res.status(400).json({ error: 'ID riwayat ujian tidak valid.' });
+        }
+        const detailResult = await pool.query(
+          'SELECT id, review_items FROM quiz_attempts WHERE id = $1 LIMIT 1',
+          [requestedAttemptId]
+        );
+        if (!detailResult.rows[0]) {
+          return res.status(404).json({ error: 'Riwayat pengerjaan ujian tidak ditemukan.' });
+        }
+        const row = detailResult.rows[0];
+        return res.status(200).json({
+          id: row.id,
+          reviewItems: Array.isArray(row.review_items) ? row.review_items : null,
+        });
+      }
+
       const [attemptResult, setoranResult, studentResult] = await Promise.all([
         pool.query(`
-          SELECT id, student_id, timestamp, bab_id, bab_label, section_number, mode, score, correct_count, total_questions
+          SELECT
+            id, student_id, timestamp, bab_id, bab_label, section_number,
+            mode, score, correct_count, total_questions,
+            (review_items IS NOT NULL) AS has_review
           FROM quiz_attempts
           ORDER BY created_at DESC, id DESC
         `),
@@ -164,6 +246,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         score: Number(row.score),
         correctCount: Number(row.correct_count),
         totalQuestions: Number(row.total_questions),
+        hasReview: Boolean(row.has_review),
       }));
 
       const setoranMap: Record<
@@ -225,6 +308,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         score,
         correctCount,
         totalQuestions,
+        reviewItems,
       } = attempt as Record<string, unknown>;
 
       if (
@@ -272,12 +356,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
+      const cleanReviewItems = sanitizeReviewItems(reviewItems);
+
       await pool.query(
         `
         INSERT INTO quiz_attempts (
-          id, student_id, timestamp, bab_id, bab_label, section_number, mode, score, correct_count, total_questions
+          id, student_id, timestamp, bab_id, bab_label, section_number, mode, score, correct_count, total_questions, review_items
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)
         ON CONFLICT (id) DO NOTHING
         `,
         [
@@ -291,6 +377,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           Math.round(score),
           Math.round(correctCount),
           Math.round(totalQuestions),
+          cleanReviewItems ? JSON.stringify(cleanReviewItems) : null,
         ]
       );
       return res.status(200).json({ ok: true });

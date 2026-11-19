@@ -7,6 +7,7 @@ import {
   StudentClass,
   StudentGender,
   QuizAttempt,
+  QuizAttemptReviewItem,
   SetoranRecord,
 } from './data/students';
 import { BabExamView } from './components/BabExamView';
@@ -28,6 +29,7 @@ import {
 import { loadStudentCredentialStatus, loadSuperadminUsername, requestStudentCredential, verifySuperadmin } from './utils/studentCredentials';
 import {
   clearAttemptsInDb,
+  loadAttemptReviewFromDb,
   loadStudentData,
   saveQuizAttemptToDb,
   toggleSetoranInDb,
@@ -183,7 +185,17 @@ export default function App() {
       }
       if (dataResult.status === 'fulfilled') {
         const data = dataResult.value;
-        setAttempts(data.attempts);
+        setAttempts((prev) => {
+          const cachedReviewById = new Map(
+            prev
+              .filter((a) => Array.isArray(a.reviewItems) && a.reviewItems.length > 0)
+              .map((a) => [a.id, a.reviewItems!])
+          );
+          return data.attempts.map((att) => {
+            const cached = cachedReviewById.get(att.id);
+            return cached ? { ...att, hasReview: true, reviewItems: cached } : att;
+          });
+        });
         setSetoranMap(data.setoranMap);
         setStudents(mergeStudentRecords(INITIAL_STUDENTS, data.studentRecords));
         setDbSyncError(null);
@@ -375,6 +387,24 @@ export default function App() {
     setAdminToken(null);
     setShowAccountModal(false);
     setActiveSection('practice');
+  };
+
+  const handleLoadAttemptReview = async (
+    attemptId: string
+  ): Promise<QuizAttemptReviewItem[] | null> => {
+    const existing = attempts.find((a) => a.id === attemptId);
+    if (existing?.reviewItems && existing.reviewItems.length > 0) {
+      return existing.reviewItems;
+    }
+    const items = await loadAttemptReviewFromDb(attemptId);
+    if (items && items.length > 0) {
+      setAttempts((prev) =>
+        prev.map((a) =>
+          a.id === attemptId ? { ...a, hasReview: true, reviewItems: items } : a
+        )
+      );
+    }
+    return items;
   };
 
   const handleSaveAttempt = (newAttempt: Omit<QuizAttempt, 'id' | 'timestamp'>) => {
@@ -800,6 +830,7 @@ export default function App() {
             onChangeGender={setFilterGender}
             attempts={attempts}
             onSaveAttempt={handleSaveAttempt}
+            onLoadAttemptReview={handleLoadAttemptReview}
             lockedStudent={loggedInStudent}
             requestedBabId={requestedBabId}
             onClearRequestedBab={() => setRequestedBabId(null)}
@@ -835,6 +866,7 @@ export default function App() {
             student={loggedInStudent}
             attempts={attempts}
             setoran={setoranMap[loggedInStudent.id]}
+            onLoadAttemptReview={handleLoadAttemptReview}
             onStartBabExam={(babId) => {
               setRequestedBabId(babId);
               setActiveSection('practice');

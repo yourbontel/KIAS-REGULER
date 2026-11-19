@@ -12,6 +12,26 @@ export interface Student {
 
 export const PASSING_SCORE = 75;
 
+export interface QuizAttemptReviewOption {
+  id: string;
+  textAr: string;
+  textSub?: string;
+}
+
+export interface QuizAttemptReviewItem {
+  questionId: string;
+  sectionNumber?: number;
+  sectionTitle?: string;
+  babKode: string;
+  promptId: string;
+  arabicHighlight: string;
+  arabicSubtext?: string;
+  options: QuizAttemptReviewOption[];
+  selectedOptionId: string;
+  correctOptionId: string;
+  explanation: string;
+}
+
 export interface QuizAttempt {
   id: string;
   studentId: string;
@@ -24,6 +44,8 @@ export interface QuizAttempt {
   score: number;
   correctCount: number;
   totalQuestions: number;
+  hasReview?: boolean;
+  reviewItems?: QuizAttemptReviewItem[];
 }
 
 export interface SetoranRecord {

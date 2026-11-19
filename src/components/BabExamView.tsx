@@ -8,19 +8,21 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Eye,
   Play,
   RotateCcw,
   Search,
   X,
-  XCircle,
 } from 'lucide-react';
 import {
   PASSING_SCORE,
   QuizAttempt,
+  QuizAttemptReviewItem,
   Student,
   StudentClass,
   StudentGender,
 } from '../data/students';
+import { ExamResultReview } from './ExamResultReview';
 import { ALL_SHOROF_BABS, ShorofBab, getBabsForClass } from '../data/shorofData';
 import {
   EXAM_SECTIONS,
@@ -42,6 +44,7 @@ interface BabExamViewProps {
   onChangeGender: (g: StudentGender) => void;
   attempts: QuizAttempt[];
   onSaveAttempt: (attempt: Omit<QuizAttempt, 'id' | 'timestamp'>) => void;
+  onLoadAttemptReview?: (attemptId: string) => Promise<QuizAttemptReviewItem[] | null>;
   lockedStudent?: Student;
   requestedBabId?: string | null;
   onClearRequestedBab?: () => void;
@@ -64,6 +67,15 @@ interface ExamResultSummary {
   correctCount: number;
   totalQuestions: number;
   passed: boolean;
+  reviewItems: QuizAttemptReviewItem[];
+}
+
+interface ReviewingAttemptState {
+  bab: ShorofBab;
+  attempt: QuizAttempt;
+  items: QuizAttemptReviewItem[] | null;
+  loading: boolean;
+  error: string | null;
 }
 
 export const BabExamView: React.FC<BabExamViewProps> = ({
@@ -76,6 +88,7 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
   onChangeGender,
   attempts,
   onSaveAttempt,
+  onLoadAttemptReview,
   lockedStudent,
   requestedBabId,
   onClearRequestedBab,
@@ -91,7 +104,12 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
   const [submittedResult, setSubmittedResult] = useState<ExamResultSummary | null>(
     null
   );
+  const [reviewingAttempt, setReviewingAttempt] = useState<ReviewingAttemptState | null>(
+    null
+  );
   const [submitWarning, setSubmitWarning] = useState<string | null>(null);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [openSectionDropdown, setOpenSectionDropdown] = useState<string | null>(null);
   const [pendingStartSection, setPendingStartSection] = useState<{
     bab: ShorofBab;
@@ -183,8 +201,58 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
     setCurrentIdx(0);
     setAnswers({});
     setSubmittedResult(null);
+    setReviewingAttempt(null);
     setSubmitWarning(null);
+    setShowSubmitConfirm(false);
+    setShowExitConfirm(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const openAttemptReview = async (bab: ShorofBab, attempt: QuizAttempt) => {
+    const preloaded =
+      attempt.reviewItems && attempt.reviewItems.length > 0
+        ? attempt.reviewItems
+        : null;
+    const shouldFetch =
+      !preloaded && attempt.hasReview !== false && Boolean(onLoadAttemptReview);
+
+    setActiveExamBab(null);
+    setActiveExamSection(null);
+    setSubmittedResult(null);
+    setShowSubmitConfirm(false);
+    setShowExitConfirm(false);
+    setReviewingAttempt({
+      bab,
+      attempt,
+      items: preloaded,
+      loading: shouldFetch,
+      error: null,
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (shouldFetch && onLoadAttemptReview) {
+      try {
+        const loaded = await onLoadAttemptReview(attempt.id);
+        setReviewingAttempt((prev) =>
+          prev && prev.attempt.id === attempt.id
+            ? { ...prev, items: loaded, loading: false, error: null }
+            : prev
+        );
+      } catch (err) {
+        setReviewingAttempt((prev) =>
+          prev && prev.attempt.id === attempt.id
+            ? {
+                ...prev,
+                loading: false,
+                error:
+                  err instanceof Error
+                    ? err.message
+                    : 'Gagal memuat rincian jawaban ujian.',
+              }
+            : prev
+        );
+      }
+    }
   };
 
   // Support launching a specific bab exam directly from another tab (e.g. Nilai Saya)
@@ -193,9 +261,15 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
     const targetBab =
       activeBabs.find((b) => b.id === requestedBabId) ||
       ALL_SHOROF_BABS.find((b) => b.id === requestedBabId);
-    // Bab per-Bagian: siswa memilih sendiri Bagian yang ingin dikerjakan dari daftar
-    if (targetBab && !targetBab.sectionedExam) {
-      startExamForBab(targetBab);
+    // Bab per-Bagian: buka dropdown daftar bagian agar siswa bisa memilih Bagian atau melihat hasil
+    if (targetBab) {
+      if (targetBab.sectionedExam) {
+        setReviewingAttempt(null);
+        setActiveExamBab(null);
+        setOpenSectionDropdown(targetBab.id);
+      } else {
+        startExamForBab(targetBab);
+      }
     }
     onClearRequestedBab?.();
   }, [requestedBabId, activeBabs, onClearRequestedBab]);
@@ -244,7 +318,7 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
     setSubmitWarning(null);
   };
 
-  const handleSubmitExam = () => {
+  const handleRequestSubmitExam = () => {
     if (!activeExamBab || !activeStudent) return;
     if (answeredCount < questions.length) {
       const unansweredNums = questions
@@ -255,6 +329,18 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
       );
       return;
     }
+    setSubmitWarning(null);
+    setShowSubmitConfirm(true);
+  };
+
+  const confirmSubmitExam = () => {
+    if (!activeExamBab || !activeStudent) return;
+    if (answeredCount < questions.length) {
+      setShowSubmitConfirm(false);
+      handleRequestSubmitExam();
+      return;
+    }
+    setShowSubmitConfirm(false);
 
     let correctCount = 0;
     questions.forEach((q, idx) => {
@@ -266,12 +352,30 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
     const totalQuestions = Math.max(1, questions.length);
     const score = Math.round((correctCount / totalQuestions) * 100);
     const passed = score >= PASSING_SCORE;
+    const reviewItems: QuizAttemptReviewItem[] = questions.map((q, idx) => ({
+      questionId: q.id,
+      sectionNumber: q.sectionNumber,
+      sectionTitle: q.sectionTitle,
+      babKode: q.babKode,
+      promptId: q.promptId,
+      arabicHighlight: q.arabicHighlight,
+      arabicSubtext: q.arabicSubtext,
+      options: q.options.map((o) => ({
+        id: o.id,
+        textAr: o.textAr,
+        ...(o.textSub ? { textSub: o.textSub } : {}),
+      })),
+      selectedOptionId: answers[idx] || '',
+      correctOptionId: q.correctOptionId,
+      explanation: q.explanation,
+    }));
 
     setSubmittedResult({
       score,
       correctCount,
       totalQuestions,
       passed,
+      reviewItems,
     });
 
     onSaveAttempt({
@@ -285,9 +389,86 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
       score,
       correctCount,
       totalQuestions,
+      hasReview: true,
+      reviewItems,
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // =========================================================================
+  // VIEW A0: REVIEW PREVIOUSLY COMPLETED ATTEMPT
+  // =========================================================================
+  if (reviewingAttempt) {
+    const { bab, attempt, items, loading, error } = reviewingAttempt;
+    const sectionMeta = attempt.sectionNumber
+      ? EXAM_SECTIONS.find((s) => s.number === attempt.sectionNumber)
+      : undefined;
+
+    return (
+      <div className="space-y-6">
+        <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <span className="font-semibold text-emerald-800">{bab.kode}</span>
+              <span aria-hidden="true">·</span>
+              <span>{bab.kategori}</span>
+              <span aria-hidden="true">·</span>
+              <span className="font-medium text-slate-700">
+                Peserta: {activeStudent?.name}
+              </span>
+            </div>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 mt-1 flex flex-wrap items-center gap-2">
+              <span>Hasil Ujian {bab.kode}:</span>
+              <span className="font-arabic text-2xl text-emerald-800">
+                {bab.wazanAr}
+              </span>
+              <span className="text-sm font-medium text-slate-500">
+                ({bab.wazanLatin})
+              </span>
+            </h2>
+            {sectionMeta && (
+              <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-900 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                {sectionMeta.groupName} · {sectionMeta.title}
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setReviewingAttempt(null)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" />
+            Daftar Bab
+          </button>
+        </div>
+
+        <ExamResultReview
+          title={`Nilai ${bab.kode}${
+            sectionMeta
+              ? ` · ${sectionMeta.groupName} Bagian ${sectionMeta.localNumber}`
+              : ''
+          }`}
+          studentName={activeStudent?.name}
+          timestamp={attempt.timestamp}
+          score={attempt.score}
+          correctCount={attempt.correctCount}
+          totalQuestions={attempt.totalQuestions}
+          passed={attempt.score >= PASSING_SCORE}
+          reviewItems={items}
+          loadingReview={loading}
+          reviewError={error}
+          onRetryLoadReview={() => void openAttemptReview(bab, attempt)}
+          onRetryExam={
+            !bab.sectionedExam ? () => startExamForBab(bab) : undefined
+          }
+          retryLabel="Ujian Ulang Bab Ini"
+          onBack={() => setReviewingAttempt(null)}
+          backLabel={attempt.sectionNumber ? 'Pilih Bagian Lain' : 'Kembali ke Daftar Bab'}
+        />
+      </div>
+    );
+  }
 
   // =========================================================================
   // VIEW A: ACTIVE EXAM RUNNER OR RESULT SCREEN
@@ -339,18 +520,15 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
             <button
               type="button"
               onClick={() => {
-                if (
-                  !submittedResult &&
-                  answeredCount > 0 &&
-                  !window.confirm(
-                    'Keluar dari ujian ini? Jawaban yang sudah dipilih tidak akan disimpan.'
-                  )
-                ) {
+                if (!submittedResult) {
+                  setShowExitConfirm(true);
                   return;
                 }
                 setActiveExamBab(null);
                 setActiveExamSection(null);
                 setSubmittedResult(null);
+                setShowSubmitConfirm(false);
+                setShowExitConfirm(false);
               }}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors"
             >
@@ -362,243 +540,34 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
 
         {/* RESULT & EXPLANATION MODE */}
         {submittedResult ? (
-          <div className="space-y-6">
-            {/* Score Hero Card */}
-            <div
-              className={`rounded-2xl border p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 ${
-                submittedResult.passed
-                  ? 'bg-emerald-50/70 border-emerald-200'
-                  : 'bg-amber-50/70 border-amber-200'
-              }`}
-            >
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-white border border-slate-200">
-                  {submittedResult.passed ? (
-                    <>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                      <span className="text-emerald-800">
-                        LULUS UJIAN (KKM {PASSING_SCORE})
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <Clock className="w-3.5 h-3.5 text-amber-700" />
-                      <span className="text-amber-800">
-                        PERLU MENGULANG (KKM {PASSING_SCORE})
-                      </span>
-                    </>
-                  )}
-                </div>
-                <h3 className="font-display text-2xl sm:text-3xl font-bold text-slate-900">
-                  Nilai {activeExamBab.kode}
-                  {activeSectionMeta
-                    ? ` · ${activeSectionMeta.groupName} Bagian ${activeSectionMeta.localNumber}`
-                    : ''}
-                  :{' '}
-                  <span
-                    className={`tabular-nums ${
-                      submittedResult.passed ? 'text-emerald-700' : 'text-amber-700'
-                    }`}
-                  >
-                    {submittedResult.score}
-                  </span>
-                  <span className="text-base font-medium text-slate-500"> / 100</span>
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-600">
-                  Jawaban benar:{' '}
-                  <strong className="text-slate-900 tabular-nums">
-                    {submittedResult.correctCount} dari {submittedResult.totalQuestions} soal
-                  </strong>
-                  . Nilai sudah otomatis tersimpan pada profil{' '}
-                  <strong className="text-slate-900">{activeStudent?.name}</strong>.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                {!activeExamSection && (
-                  <button
-                    type="button"
-                    onClick={() => startExamForBab(activeExamBab)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    Ujian Ulang Bab Ini
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveExamBab(null);
-                    setActiveExamSection(null);
-                    setSubmittedResult(null);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors"
-                >
-                  {activeExamSection ? 'Pilih Bagian Lain' : 'Pilih Bab Lain'}
-                </button>
-              </div>
-            </div>
-
-            {/* Ringkasan Skor Per Bagian (12 Bagian: Istilahi & Lughawi) */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6">
-              <h4 className="text-sm font-bold text-slate-900 mb-3">
-                Rincian Skor Per Bagian (6 Istilahi + 6 Lughawi)
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {EXAM_SECTIONS.map((sec) => {
-                  const secQuestions = questions
-                    .map((q, idx) => ({ q, idx }))
-                    .filter((item) => item.q.sectionNumber === sec.number);
-                  if (secQuestions.length === 0) return null;
-                  const secCorrect = secQuestions.filter(
-                    ({ q, idx }) => answers[idx] === q.correctOptionId
-                  ).length;
-                  const allRight =
-                    secQuestions.length > 0 && secCorrect === secQuestions.length;
-
-                  return (
-                    <div
-                      key={sec.number}
-                      className="p-3.5 rounded-xl bg-[#F8FAFC] border border-slate-200 flex items-center justify-between gap-3"
-                    >
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-bold text-emerald-800">
-                          {sec.shortLabel}
-                        </div>
-                        <div className="text-xs text-slate-700 truncate">
-                          {sec.title.replace(/^Bagian \d+:\s*/, '')}
-                        </div>
-                      </div>
-                      <span
-                        className={`shrink-0 text-xs font-bold tabular-nums px-2.5 py-1 rounded-lg border ${
-                          allRight
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                            : 'bg-white text-slate-800 border-slate-200'
-                        }`}
-                      >
-                        {secCorrect}/{secQuestions.length}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Pembahasan Per Soal */}
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200">
-                <h4 className="text-base font-bold text-slate-900">
-                  Pembahasan Jawaban ({questions.length} Soal)
-                </h4>
-              </div>
-              <div className="divide-y divide-slate-200">
-                {questions.map((q, idx) => {
-                  const chosenId = answers[idx];
-                  const isCorrect = chosenId === q.correctOptionId;
-                  const chosenOpt = q.options.find((o) => o.id === chosenId);
-                  const correctOpt = q.options.find(
-                    (o) => o.id === q.correctOptionId
-                  );
-
-                  return (
-                    <div key={q.id} className="p-5 sm:p-6 space-y-3">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-bold text-slate-500 tabular-nums">
-                            Soal {idx + 1}
-                          </span>
-                          {q.sectionTitle && (
-                            <span className="text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                              {q.sectionTitle}
-                            </span>
-                          )}
-                          <span
-                            className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                              isCorrect
-                                ? 'bg-emerald-50 text-emerald-800'
-                                : 'bg-rose-50 text-rose-700'
-                            }`}
-                          >
-                            {isCorrect ? (
-                              <>
-                                <CheckCircle2 className="w-3 h-3" /> Benar
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="w-3 h-3" /> Salah
-                              </>
-                            )}
-                          </span>
-                        </div>
-                        <span className="text-[11px] text-slate-400">{q.babKode}</span>
-                      </div>
-
-                      <div className="text-sm font-medium text-slate-800">
-                        <div>{q.promptId}</div>
-                        <div className="font-arabic text-xl text-slate-900 mt-1">
-                          {q.arabicHighlight}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                        <div
-                          className={`p-3 rounded-lg border ${
-                            isCorrect
-                              ? 'bg-emerald-50 border-emerald-200'
-                              : 'bg-rose-50 border-rose-200'
-                          }`}
-                        >
-                          <div className="text-[11px] text-slate-500 mb-0.5">
-                            Jawaban Anda
-                          </div>
-                          <div
-                            className={`font-semibold text-slate-900 ${
-                              hasArabicText(chosenOpt?.textAr || '')
-                                ? 'font-arabic text-lg'
-                                : 'text-sm'
-                            }`}
-                          >
-                            {chosenOpt?.textAr || '—'}
-                          </div>
-                          {chosenOpt?.textSub && (
-                            <div className="text-[11px] text-slate-600 mt-0.5">
-                              {chosenOpt.textSub}
-                            </div>
-                          )}
-                        </div>
-                        {!isCorrect && (
-                          <div className="p-3 rounded-lg border bg-emerald-50 border-emerald-200">
-                            <div className="text-[11px] text-emerald-800 mb-0.5">
-                              Jawaban Benar
-                            </div>
-                            <div
-                              className={`font-semibold text-emerald-900 ${
-                                hasArabicText(correctOpt?.textAr || '')
-                                  ? 'font-arabic text-lg'
-                                  : 'text-sm'
-                              }`}
-                            >
-                              {correctOpt?.textAr}
-                            </div>
-                            {correctOpt?.textSub && (
-                              <div className="text-[11px] text-emerald-800 mt-0.5">
-                                {correctOpt.textSub}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="text-xs text-slate-600 bg-[#F8FAFC] p-3 rounded-lg border border-slate-200">
-                        <strong className="text-slate-900">Kaidah:</strong>{' '}
-                        {q.explanation}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          <ExamResultReview
+            title={`Nilai ${activeExamBab.kode}${
+              activeSectionMeta
+                ? ` · ${activeSectionMeta.groupName} Bagian ${activeSectionMeta.localNumber}`
+                : ''
+            }`}
+            studentName={activeStudent?.name}
+            score={submittedResult.score}
+            correctCount={submittedResult.correctCount}
+            totalQuestions={submittedResult.totalQuestions}
+            passed={submittedResult.passed}
+            reviewItems={submittedResult.reviewItems}
+            savedNotice={
+              activeStudent
+                ? `Nilai sudah otomatis tersimpan pada profil ${activeStudent.name}.`
+                : undefined
+            }
+            onRetryExam={
+              !activeExamSection ? () => startExamForBab(activeExamBab) : undefined
+            }
+            retryLabel="Ujian Ulang Bab Ini"
+            onBack={() => {
+              setActiveExamBab(null);
+              setActiveExamSection(null);
+              setSubmittedResult(null);
+            }}
+            backLabel={activeExamSection ? 'Pilih Bagian Lain' : 'Pilih Bab Lain'}
+          />
         ) : (
           /* ACTIVE QUESTION STAGE */
           currentQuestion && (
@@ -712,7 +681,7 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                   ) : (
                     <button
                       type="button"
-                      onClick={handleSubmitExam}
+                      onClick={handleRequestSubmitExam}
                       className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg transition-colors"
                     >
                       <CheckCircle2 className="w-4 h-4" />
@@ -787,7 +756,7 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                 <div className="pt-3 border-t border-slate-200">
                   <button
                     type="button"
-                    onClick={handleSubmitExam}
+                    onClick={handleRequestSubmitExam}
                     className="w-full py-2.5 px-4 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg transition-colors"
                   >
                     Kumpulkan Ujian ({answeredCount}/{questions.length})
@@ -796,6 +765,186 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
               </aside>
             </div>
           )
+        )}
+
+        {/* Popup Konfirmasi Kumpulkan Ujian */}
+        {showSubmitConfirm && !submittedResult && (
+          <div
+            className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4"
+            onClick={() => setShowSubmitConfirm(false)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="submit-exam-confirm-title"
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden"
+            >
+              <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3 bg-amber-50/70">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2
+                      id="submit-exam-confirm-title"
+                      className="text-sm font-bold text-slate-900"
+                    >
+                      Konfirmasi Kumpulkan Ujian
+                    </h2>
+                    <p className="text-[11px] text-slate-500">
+                      Pastikan seluruh jawaban Anda sudah benar
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSubmitConfirm(false)}
+                  aria-label="Tutup konfirmasi"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-slate-200 space-y-1.5">
+                  <div className="text-[11px] font-semibold text-emerald-800">
+                    {activeExamBab.kode}
+                    {activeSectionMeta
+                      ? ` · ${activeSectionMeta.groupName} Bagian ${activeSectionMeta.localNumber}`
+                      : ''}
+                  </div>
+                  {activeSectionMeta && (
+                    <div className="text-sm font-bold text-slate-900">
+                      {activeSectionMeta.title.replace(/^Bagian \d+:\s*/, '')}
+                    </div>
+                  )}
+                  <div className="text-xs text-slate-600 tabular-nums">
+                    Terjawab: {answeredCount} / {questions.length} soal
+                    {activeStudent ? ` · Siswa: ${activeStudent.name}` : ''}
+                  </div>
+                </div>
+
+                <div className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3.5 py-2.5 leading-relaxed">
+                  <strong>Peringatan:</strong> Ujian ini hanya dapat dikumpulkan{' '}
+                  <strong>1 (satu) kali</strong> dan <strong>tidak dapat diulang</strong>{' '}
+                  setelah dikumpulkan. Apakah Anda yakin ingin mengumpulkan jawaban sekarang?
+                </div>
+
+                <div className="flex items-center gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowSubmitConfirm(false)}
+                    className="flex-1 py-2.5 px-4 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors"
+                  >
+                    Periksa Kembali
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmSubmitExam}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-4 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl transition-colors"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Ya, Kumpulkan Ujian
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Popup Peringatan Keluar Sebelum Mengumpulkan Ujian */}
+        {showExitConfirm && !submittedResult && (
+          <div
+            className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4"
+            onClick={() => setShowExitConfirm(false)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="exit-exam-confirm-title"
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden"
+            >
+              <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3 bg-rose-50/70">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2
+                      id="exit-exam-confirm-title"
+                      className="text-sm font-bold text-slate-900"
+                    >
+                      Ujian Belum Disimpan
+                    </h2>
+                    <p className="text-[11px] text-slate-500">
+                      Anda belum menyelesaikan dan mengirim ujian ini
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowExitConfirm(false)}
+                  aria-label="Tutup peringatan keluar"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-slate-200 space-y-1.5">
+                  <div className="text-[11px] font-semibold text-emerald-800">
+                    {activeExamBab.kode}
+                    {activeSectionMeta
+                      ? ` · ${activeSectionMeta.groupName} Bagian ${activeSectionMeta.localNumber}`
+                      : ''}
+                  </div>
+                  {activeSectionMeta && (
+                    <div className="text-sm font-bold text-slate-900">
+                      {activeSectionMeta.title.replace(/^Bagian \d+:\s*/, '')}
+                    </div>
+                  )}
+                  <div className="text-xs text-slate-600 tabular-nums">
+                    Terjawab: {answeredCount} / {questions.length} soal
+                    {activeStudent ? ` · Siswa: ${activeStudent.name}` : ''}
+                  </div>
+                </div>
+
+                <div className="text-xs text-rose-900 bg-rose-50 border border-rose-200 rounded-lg px-3.5 py-2.5 leading-relaxed">
+                  <strong>Perhatian:</strong> Jawaban ujian ini{' '}
+                  <strong>belum disimpan</strong> karena Anda belum menekan tombol{' '}
+                  <strong>Kumpulkan Ujian</strong>. Semua jawaban yang sudah dipilih{' '}
+                  <strong>akan terhapus</strong> jika Anda keluar sebelum mengirim.
+                </div>
+
+                <div className="flex items-center gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowExitConfirm(false)}
+                    className="flex-1 py-2.5 px-4 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors"
+                  >
+                    Lanjutkan Ujian
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowExitConfirm(false);
+                      setShowSubmitConfirm(false);
+                      setActiveExamBab(null);
+                      setActiveExamSection(null);
+                      setSubmittedResult(null);
+                    }}
+                    className="flex-1 py-2.5 px-4 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors"
+                  >
+                    Keluar &amp; Hapus
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     );
@@ -1096,6 +1245,11 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                                     const tries = stat.sectionAttemptCount[sectionNo] ?? 0;
                                     const done = best !== undefined;
                                     const sectionPassed = done && best >= PASSING_SCORE;
+                                    const sectionAttempt = studentAttempts.find(
+                                      (a) =>
+                                        a.babId === bab.id &&
+                                        a.sectionNumber === sectionNo
+                                    );
                                     return (
                                       <div
                                         key={sectionNo}
@@ -1131,10 +1285,18 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                                           </div>
                                         </div>
                                         {done ? (
-                                          <div className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 border border-slate-200">
-                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                            Sudah Dikerjakan
-                                          </div>
+                                          <button
+                                            type="button"
+                                            disabled={!sectionAttempt}
+                                            onClick={() =>
+                                              sectionAttempt &&
+                                              void openAttemptReview(bab, sectionAttempt)
+                                            }
+                                            className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white transition-colors"
+                                          >
+                                            <Eye className="w-3.5 h-3.5" />
+                                            Lihat Jawaban
+                                          </button>
                                         ) : (
                                           <button
                                             type="button"
@@ -1234,27 +1396,47 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                         </div>
                       )}
 
-                      <button
-                        type="button"
-                        onClick={() => startExamForBab(bab)}
-                        className={`w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-semibold rounded-lg transition-colors ${
-                          hasAttempt
-                            ? 'bg-slate-900 hover:bg-slate-800 text-white'
-                            : 'bg-emerald-700 hover:bg-emerald-800 text-white'
-                        }`}
-                      >
-                        {hasAttempt ? (
-                          <>
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            Ujian Ulang {bab.kode}
-                          </>
-                        ) : (
-                          <>
-                            <Play className="w-3.5 h-3.5" />
-                            Mulai Ujian {bab.kode}
-                          </>
-                        )}
-                      </button>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={() => startExamForBab(bab)}
+                          className={`w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-semibold rounded-lg transition-colors ${
+                            hasAttempt
+                              ? 'bg-slate-900 hover:bg-slate-800 text-white'
+                              : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                          }`}
+                        >
+                          {hasAttempt ? (
+                            <>
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              Ujian Ulang {bab.kode}
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-3.5 h-3.5" />
+                              Mulai Ujian {bab.kode}
+                            </>
+                          )}
+                        </button>
+                        {hasAttempt && (() => {
+                          const latestAttempt = studentAttempts.find(
+                            (a) => a.babId === bab.id
+                          );
+                          if (!latestAttempt) return null;
+                          return (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void openAttemptReview(bab, latestAttempt)
+                              }
+                              className="w-full inline-flex items-center justify-center gap-2 py-2 px-4 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              Lihat Jawaban Terakhir
+                            </button>
+                          );
+                        })()}
+                      </div>
                     </div>
                   </div>
                 );
