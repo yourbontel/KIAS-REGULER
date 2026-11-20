@@ -11,9 +11,9 @@ export const TashrifSimulator: React.FC = () => {
     [curriculumClass]
   );
 
-  const [selectedBabId, setSelectedBabId] = useState<string>(activeBabs[0].id);
+  const [selectedBabId, setSelectedBabId] = useState<string>(activeBabs[0]?.id ?? '');
   const [selectedVerbId, setSelectedVerbId] = useState<string>(
-    activeBabs[0].mauzunList[0].id
+    activeBabs[0]?.mauzunList[0]?.id ?? ''
   );
   const [activeTab, setActiveTab] = useState<'istilahi' | 'lughawi'>('istilahi');
   const [highlightedDhamirIdx, setHighlightedDhamirIdx] = useState<number>(0);
@@ -21,15 +21,15 @@ export const TashrifSimulator: React.FC = () => {
   const activeBab =
     activeBabs.find((b) => b.id === selectedBabId) || activeBabs[0];
   const activeVerb =
-    activeBab.mauzunList.find((v) => v.id === selectedVerbId) ||
-    activeBab.mauzunList[0];
+    activeBab?.mauzunList.find((v) => v.id === selectedVerbId) ||
+    activeBab?.mauzunList[0];
 
   const handleSelectCurriculum = (kelas: StudentClass) => {
     setCurriculumClass(kelas);
     const nextBabs = getBabsForClass(kelas);
     if (nextBabs.length > 0) {
       setSelectedBabId(nextBabs[0].id);
-      setSelectedVerbId(nextBabs[0].mauzunList[0].id);
+      setSelectedVerbId(nextBabs[0].mauzunList[0]?.id ?? '');
     }
   };
 
@@ -63,13 +63,19 @@ export const TashrifSimulator: React.FC = () => {
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  {kelas} ({kelas === 'Reguler 1' ? '14 Bab' : '9 Bab'})
+                  {kelas} ({getBabsForClass(kelas).length > 0 ? `${getBabsForClass(kelas).length} Bab` : 'Belum ada soal'})
                 </button>
               );
             })}
           </div>
         </div>
 
+        {!activeBab || !activeVerb ? (
+          <div className="py-8 text-center text-xs text-slate-500">
+            Belum ada materi maupun soal ujian untuk kelas {curriculumClass}.
+          </div>
+        ) : (
+        <>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
           <div className="lg:col-span-7">
             <div className="text-xs text-slate-500 mb-2">
@@ -190,10 +196,12 @@ export const TashrifSimulator: React.FC = () => {
             </button>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {/* Main Table View */}
-      {activeTab === 'istilahi' ? (
+      {activeBab && activeVerb && (activeTab === 'istilahi' ? (
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -455,7 +463,7 @@ export const TashrifSimulator: React.FC = () => {
             </div>
           </aside>
         </div>
-      )}
+      ))}
     </div>
   );
 };

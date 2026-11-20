@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import {
+  ManualScoreRecord,
   PASSING_SCORE,
   QuizAttempt,
   SetoranRecord,
@@ -23,8 +24,10 @@ import {
 } from '../data/students';
 import { ShorofBab, getBabsForClass } from '../data/shorofData';
 import { SECTION_NUMBERS } from '../utils/babScores';
+import { formatGradeNumber } from '../utils/finalGrades';
 import {
   RankedStudentEntry,
+  RankingSortMode,
   computeStudentRankings,
   isEntryPassing,
 } from '../utils/ranking';
@@ -33,6 +36,7 @@ interface RankingViewProps {
   students: Student[];
   attempts: QuizAttempt[];
   setoranMap: Record<string, SetoranRecord>;
+  manualScoresMap?: Record<string, ManualScoreRecord>;
   loggedInStudent?: Student;
   isSuperadmin?: boolean;
   selectedClass?: StudentClass;
@@ -89,6 +93,7 @@ export const RankingView: React.FC<RankingViewProps> = ({
   students,
   attempts,
   setoranMap,
+  manualScoresMap = {},
   loggedInStudent,
   isSuperadmin = false,
   selectedClass,
@@ -99,12 +104,16 @@ export const RankingView: React.FC<RankingViewProps> = ({
   );
   const [genderFilter, setGenderFilter] = useState<'Semua' | StudentGender>('Semua');
   const [selectedBabId, setSelectedBabId] = useState<'all' | string>('all');
+  const [sortMode, setSortMode] = useState<RankingSortMode>('total_score');
   const [searchQuery, setSearchQuery] = useState('');
   const [babMenuOpen, setBabMenuOpen] = useState(false);
   const babDropdownRef = useRef<HTMLDivElement>(null);
   const effectiveKelas: StudentClass =
     !isSuperadmin && loggedInStudent ? loggedInStudent.kelas : kelasFilter;
   const effectiveGender = !isSuperadmin && loggedInStudent ? loggedInStudent.gender : genderFilter;
+  const showSemester1Cols = selectedBabId === 'all' && effectiveKelas === 'Reguler 1';
+  const effectiveSortMode: RankingSortMode =
+    effectiveKelas === 'Reguler 1' ? sortMode : 'total_score';
 
   useEffect(() => {
     if (!isSuperadmin || !selectedClass || selectedClass === kelasFilter) return;
@@ -172,8 +181,19 @@ export const RankingView: React.FC<RankingViewProps> = ({
         kelas: effectiveKelas,
         gender: effectiveGender,
         babId: selectedBabId,
+        manualScoresMap,
+        sortMode: effectiveSortMode,
       }),
-    [students, attempts, setoranMap, effectiveKelas, effectiveGender, selectedBabId]
+    [
+      students,
+      attempts,
+      setoranMap,
+      manualScoresMap,
+      effectiveKelas,
+      effectiveGender,
+      selectedBabId,
+      effectiveSortMode,
+    ]
   );
 
   const scoredEntries = useMemo(
@@ -211,13 +231,23 @@ export const RankingView: React.FC<RankingViewProps> = ({
       kelas: loggedInStudent.kelas,
       gender: loggedInStudent.gender,
       babId: selectedBabId,
+      manualScoresMap,
+      sortMode: effectiveSortMode,
     });
     const entry =
       classRankings.find((e) => e.student.id === loggedInStudent.id) || null;
     const totalInClass = classRankings.length;
     const rankedInClass = classRankings.filter((e) => e.rank !== null).length;
     return { entry, totalInClass, rankedInClass };
-  }, [loggedInStudent, students, attempts, setoranMap, selectedBabId]);
+  }, [
+    loggedInStudent,
+    students,
+    attempts,
+    setoranMap,
+    manualScoresMap,
+    selectedBabId,
+    effectiveSortMode,
+  ]);
 
   const activeBabMeta = useMemo(
     () =>
@@ -234,8 +264,11 @@ export const RankingView: React.FC<RankingViewProps> = ({
       'Kelas',
       'Kelompok',
       'Asal Kota',
-      selectedBabId === 'all' ? 'Total Skor' : `Nilai ${activeBabMeta?.kode ?? ''}`,
-      'Rata-rata',
+      selectedBabId === 'all' ? 'Total Skor Bab' : `Nilai ${activeBabMeta?.kode ?? ''}`,
+      showSemester1Cols ? 'Rata-rata Web (50%)' : 'Rata-rata',
+      ...(showSemester1Cols
+        ? ['UTS Sem. 1 (10%)', 'UAS Sem. 1 (40%)', 'Nilai Akhir Sem. 1']
+        : []),
       'Bab Selesai',
       'Total Bab Kelas',
       'Bab Lulus',
@@ -251,6 +284,13 @@ export const RankingView: React.FC<RankingViewProps> = ({
         ? entry.totalScore
         : entry.selectedBabScore ?? '-',
       entry.avgScore ?? '-',
+      ...(showSemester1Cols
+        ? [
+            entry.utsScore ?? '-',
+            entry.uasScore ?? '-',
+            entry.finalScore !== null ? formatGradeNumber(entry.finalScore) : '-',
+          ]
+        : []),
       entry.completedBabsCount,
       entry.totalBabsForClass,
       entry.passedBabsCount,
@@ -268,10 +308,12 @@ export const RankingView: React.FC<RankingViewProps> = ({
 
   const renderStudentRow = (entry: RankedStudentEntry) => {
     const isMe = loggedInStudent?.id === entry.student.id;
-    const passing = isEntryPassing(entry, selectedBabId);
+    const passing = isEntryPassing(entry, selectedBabId, effectiveSortMode);
     const hasDisplayedScore =
       selectedBabId === 'all'
-        ? entry.completedBabsCount > 0
+        ? effectiveSortMode === 'final_grade'
+          ? entry.finalScore !== null
+          : entry.completedBabsCount > 0
         : entry.selectedBabScore !== null;
 
     return (
@@ -343,6 +385,36 @@ export const RankingView: React.FC<RankingViewProps> = ({
         <td className="py-3 px-4 text-right tabular-nums font-semibold text-slate-700">
           {entry.avgScore !== null ? entry.avgScore : '—'}
         </td>
+        {showSemester1Cols && (
+          <>
+            <td className="py-3 px-3 text-right tabular-nums text-slate-700">
+              {entry.utsScore !== null ? entry.utsScore : '—'}
+            </td>
+            <td className="py-3 px-3 text-right tabular-nums text-slate-700">
+              {entry.uasScore !== null ? entry.uasScore : '—'}
+            </td>
+            <td className="py-3 px-4 text-right tabular-nums font-bold">
+              {entry.finalScore !== null ? (
+                <span
+                  className={
+                    !entry.finalGradeComplete
+                      ? 'text-slate-700'
+                      : entry.finalGradePassed
+                      ? 'text-emerald-700'
+                      : 'text-amber-700'
+                  }
+                >
+                  {formatGradeNumber(entry.finalScore)}
+                  {!entry.finalGradeComplete && (
+                    <span className="ml-0.5 text-[10px] font-medium text-sky-700">*</span>
+                  )}
+                </span>
+              ) : (
+                <span className="text-slate-300">—</span>
+              )}
+            </td>
+          </>
+        )}
         <td className="py-3 px-4 text-right tabular-nums">
           {selectedBabId === 'all' ? (
             <span
@@ -368,6 +440,12 @@ export const RankingView: React.FC<RankingViewProps> = ({
           {!hasDisplayedScore ? (
             <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500">
               Belum Ujian
+            </span>
+          ) : showSemester1Cols &&
+            effectiveSortMode === 'final_grade' &&
+            !entry.finalGradeComplete ? (
+            <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">
+              Sementara
             </span>
           ) : passing ? (
             <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
@@ -511,12 +589,46 @@ export const RankingView: React.FC<RankingViewProps> = ({
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 {selectedBabId === 'all'
-                  ? 'Urutan berdasarkan Total Skor akumulasi nilai terbaik tiap Bab, diikuti nilai rata-rata dan jumlah Bab lulus.'
+                  ? showSemester1Cols
+                    ? effectiveSortMode === 'final_grade'
+                      ? 'Urutan berdasarkan Nilai Akhir Semester 1 Reguler 1 (50% Ujian Web + 10% UTS + 40% UAS).'
+                      : 'Urutan berdasarkan Total Skor akumulasi nilai terbaik tiap Bab, disertai komponen Nilai Akhir Semester 1 (50% Web · 10% UTS · 40% UAS).'
+                    : 'Urutan berdasarkan Total Skor akumulasi nilai terbaik tiap Bab, diikuti nilai rata-rata dan jumlah Bab lulus.'
                   : `Urutan berdasarkan nilai terbaik pada ${activeBabMeta?.kode} (${activeBabMeta?.wazanAr}).`}
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {showSemester1Cols && (
+                <div
+                  role="group"
+                  aria-label="Urutkan Peringkat"
+                  className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/80"
+                >
+                  {(
+                    [
+                      { value: 'total_score', label: 'Skor Bab' },
+                      { value: 'final_grade', label: 'Nilai Akhir Sem. 1' },
+                    ] as const
+                  ).map((opt) => {
+                    const active = effectiveSortMode === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setSortMode(opt.value)}
+                        className={`py-1 px-2.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${
+                          active
+                            ? 'bg-white text-emerald-800 shadow-xs ring-1 ring-emerald-200'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg tabular-nums">
                 <Users className="w-3.5 h-3.5 text-slate-500" />
                 {isSuperadmin
@@ -758,7 +870,22 @@ export const RankingView: React.FC<RankingViewProps> = ({
                 <th className="py-3 px-4 w-20">Peringkat</th>
                 <th className="py-3 px-4 min-w-[210px]">Nama Siswa</th>
                 <th className="py-3 px-4 text-center whitespace-nowrap">Progres Bab</th>
-                <th className="py-3 px-4 text-right whitespace-nowrap">Rata-rata</th>
+                <th className="py-3 px-4 text-right whitespace-nowrap">
+                  {showSemester1Cols ? 'Web (50%)' : 'Rata-rata'}
+                </th>
+                {showSemester1Cols && (
+                  <>
+                    <th className="py-3 px-3 text-right whitespace-nowrap">
+                      UTS Sem. 1 (10%)
+                    </th>
+                    <th className="py-3 px-3 text-right whitespace-nowrap">
+                      UAS Sem. 1 (40%)
+                    </th>
+                    <th className="py-3 px-4 text-right whitespace-nowrap">
+                      Nilai Akhir Sem. 1
+                    </th>
+                  </>
+                )}
                 <th className="py-3 px-4 text-right whitespace-nowrap">
                   {selectedBabId === 'all' ? 'Total Skor' : 'Nilai Bab'}
                 </th>
@@ -768,7 +895,10 @@ export const RankingView: React.FC<RankingViewProps> = ({
             <tbody className="divide-y divide-slate-200 text-xs">
               {visibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-slate-500">
+                  <td
+                    colSpan={showSemester1Cols ? 9 : 6}
+                    className="py-10 text-center text-slate-500"
+                  >
                     {isSuperadmin
                       ? 'Tidak ada siswa yang sesuai dengan filter pencarian.'
                       : 'Belum ada siswa yang masuk 5 besar peringkat pada filter ini.'}
@@ -781,7 +911,7 @@ export const RankingView: React.FC<RankingViewProps> = ({
                 <>
                   <tr className="bg-slate-50/90">
                     <td
-                      colSpan={6}
+                      colSpan={showSemester1Cols ? 9 : 6}
                       className="py-2 px-4 text-[11px] font-semibold text-slate-500 text-center"
                     >
                       {visibleRows.length > 0

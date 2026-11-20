@@ -1,4 +1,5 @@
 import type {
+  ManualScoreRecord,
   QuizAttempt,
   QuizAttemptReviewItem,
   SetoranRecord,
@@ -11,6 +12,7 @@ export interface StudentDataSnapshot {
   setoranMap: Record<string, SetoranRecord>;
   studentRecords: Student[];
   examAccess?: ExamAccessConfig;
+  manualScoresMap?: Record<string, ManualScoreRecord>;
 }
 
 export async function loadStudentData(): Promise<StudentDataSnapshot> {
@@ -98,6 +100,54 @@ export async function clearAttemptsInDb(adminToken: string | null): Promise<stri
   return error;
 }
 
+export async function deleteAttemptInDb(
+  attemptId: string,
+  adminToken: string | null
+): Promise<{ deletedIds: string[]; error: string | null }> {
+  const { data, error } = await postStudentData<{
+    ok: boolean;
+    deletedIds?: string[];
+  }>({ action: 'delete-attempt', attemptId }, adminToken);
+  return { deletedIds: data?.deletedIds ?? [], error };
+}
+
+import type { ResetAttemptsParams } from './attemptFilter';
+
+export async function resetStudentAttemptsInDb(
+  params: ResetAttemptsParams,
+  adminToken: string | null
+): Promise<{ deletedIds: string[]; error: string | null }> {
+  const payload: Record<string, unknown> = {
+    action: 'reset-student-attempts',
+  };
+  if (params.studentId && params.studentId !== 'all') {
+    payload.studentId = params.studentId;
+  }
+  if (params.studentIds && params.studentIds.length > 0) {
+    payload.studentIds = params.studentIds;
+  }
+  if (params.babId) {
+    payload.babId = params.babId;
+  }
+  if (params.sectionNumber === null) {
+    payload.sectionNumber = null;
+  } else if (typeof params.sectionNumber === 'number') {
+    payload.sectionNumber = params.sectionNumber;
+  }
+  if (params.tashrifType) {
+    payload.tashrifType = params.tashrifType;
+  }
+  if (params.mode) {
+    payload.mode = params.mode;
+  }
+
+  const { data, error } = await postStudentData<{
+    ok: boolean;
+    deletedIds?: string[];
+  }>(payload, adminToken);
+  return { deletedIds: data?.deletedIds ?? [], error };
+}
+
 export async function updateExamAccessInDb(
   config: ExamAccessConfig,
   adminToken: string | null
@@ -107,4 +157,21 @@ export async function updateExamAccessInDb(
     examAccess: ExamAccessConfig;
   }>({ action: 'update-exam-access', config }, adminToken);
   return { examAccess: data?.examAccess ?? null, error };
+}
+
+export interface ManualScoreInputEntry {
+  studentId: string;
+  utsScore: number | null;
+  uasScore: number | null;
+}
+
+export async function saveManualScoresInDb(
+  entries: ManualScoreInputEntry[],
+  adminToken: string | null
+): Promise<{ saved: Record<string, ManualScoreRecord | null> | null; error: string | null }> {
+  const { data, error } = await postStudentData<{
+    ok: boolean;
+    saved: Record<string, ManualScoreRecord | null>;
+  }>({ action: 'save-manual-scores', entries }, adminToken);
+  return { saved: data?.saved ?? null, error };
 }

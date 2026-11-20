@@ -9,6 +9,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import {
+  ManualScoreRecord,
   PASSING_SCORE,
   QuizAttempt,
   QuizAttemptReviewItem,
@@ -17,6 +18,10 @@ import {
 } from '../data/students';
 import { getBabsForClass } from '../data/shorofData';
 import { summarizeBabAttempts } from '../utils/babScores';
+import {
+  computeFinalGradeSummary,
+  formatGradeNumber,
+} from '../utils/finalGrades';
 import {
   DEFAULT_EXAM_ACCESS,
   type ExamAccessConfig,
@@ -28,6 +33,7 @@ interface StudentProgressViewProps {
   student: Student;
   attempts: QuizAttempt[];
   setoran?: SetoranRecord;
+  manualScore?: ManualScoreRecord;
   examAccess?: ExamAccessConfig;
   onStartBabExam: (babId: string) => void;
   onLoadAttemptReview?: (attemptId: string) => Promise<QuizAttemptReviewItem[] | null>;
@@ -45,6 +51,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
   student,
   attempts,
   setoran,
+  manualScore,
   examAccess = DEFAULT_EXAM_ACCESS,
   onStartBabExam,
 }) => {
@@ -87,6 +94,11 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
             .reduce((sum, r) => sum + (r.bestScore ?? 0), 0) / completedBabsCount
         )
       : 0;
+  const webScoreForFinal = completedBabsCount > 0 ? avgBestScore : null;
+  const finalGrade = useMemo(
+    () => computeFinalGradeSummary(webScoreForFinal, manualScore),
+    [webScoreForFinal, manualScore]
+  );
   const oralSetoranBabs = setoran?.completedBabs || [];
 
   return (
@@ -104,7 +116,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
         </div>
 
         <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <div className="text-xs font-medium text-slate-500">Rata-rata Nilai Terbaik</div>
+          <div className="text-xs font-medium text-slate-500">Rata-rata Ujian Web (50%)</div>
           <div className="text-2xl font-bold text-emerald-700 tabular-nums mt-1">
             {completedBabsCount > 0 ? avgBestScore : '—'}
           </div>
@@ -124,6 +136,99 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
         </div>
       </div>
 
+      {/* Weighted Final Score Breakdown Card (Semester 1 Reguler 1: 50% Web + 10% UTS + 40% UAS) */}
+      {student.kelas === 'Reguler 1' && (
+        <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">
+                Komposisi Nilai Akhir Semester 1 (50% Ujian Web · 10% UTS · 40% UAS)
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Nilai UTS dan UAS Semester 1 diinput oleh pengajar/superadmin sebagai bagian dari evaluasi akhir Reguler 1.
+              </p>
+            </div>
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                finalGrade.finalScore === null
+                  ? 'bg-slate-100 text-slate-500'
+                  : !finalGrade.isComplete
+                  ? 'bg-sky-50 text-sky-800 border border-sky-200'
+                  : finalGrade.passed
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  : 'bg-amber-50 text-amber-800 border border-amber-200'
+              }`}
+            >
+              {finalGrade.finalScore === null
+                ? 'Belum Ada Nilai'
+                : !finalGrade.isComplete
+                ? 'Nilai Sementara (Belum Lengkap)'
+                : finalGrade.passed
+                ? `Lulus (KKM ${PASSING_SCORE})`
+                : `Di Bawah KKM (${PASSING_SCORE})`}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="p-4 rounded-xl bg-[#F8FAFC] border border-slate-200">
+              <div className="text-[11px] font-medium text-slate-500">
+                Ujian Web (Bobot 50%)
+              </div>
+              <div className="text-xl font-bold text-slate-900 tabular-nums mt-1">
+                {finalGrade.webScore !== null ? finalGrade.webScore : '—'}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1 tabular-nums">
+                {finalGrade.webWeighted !== null
+                  ? `Kontribusi: ${formatGradeNumber(finalGrade.webWeighted)} poin`
+                  : 'Belum ada Bab selesai'}
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-[#F8FAFC] border border-slate-200">
+              <div className="text-[11px] font-medium text-slate-500">
+                Nilai UTS Sem. 1 (Bobot 10%)
+              </div>
+              <div className="text-xl font-bold text-slate-900 tabular-nums mt-1">
+                {finalGrade.utsScore !== null ? finalGrade.utsScore : '—'}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1 tabular-nums">
+                {finalGrade.utsWeighted !== null
+                  ? `Kontribusi: ${formatGradeNumber(finalGrade.utsWeighted)} poin`
+                  : 'Belum diinput admin'}
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-[#F8FAFC] border border-slate-200">
+              <div className="text-[11px] font-medium text-slate-500">
+                Nilai UAS Sem. 1 (Bobot 40%)
+              </div>
+              <div className="text-xl font-bold text-slate-900 tabular-nums mt-1">
+                {finalGrade.uasScore !== null ? finalGrade.uasScore : '—'}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1 tabular-nums">
+                {finalGrade.uasWeighted !== null
+                  ? `Kontribusi: ${formatGradeNumber(finalGrade.uasWeighted)} poin`
+                  : 'Belum diinput admin'}
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200">
+              <div className="text-[11px] font-semibold text-emerald-900">
+                Total Nilai Akhir Sem. 1
+              </div>
+              <div className="text-2xl font-bold text-emerald-800 tabular-nums mt-1">
+                {formatGradeNumber(finalGrade.finalScore)}
+              </div>
+              <div className="text-[11px] text-emerald-900/80 mt-1">
+                {finalGrade.isComplete
+                  ? 'Akumulasi penuh 100%'
+                  : 'Menunggu komponen lengkap'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Per-Bab Score Breakdown Table */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
@@ -137,6 +242,11 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
           </div>
         </div>
 
+        {perBabRows.length === 0 ? (
+          <div className="p-8 text-center text-xs text-slate-500">
+            Belum ada soal ujian yang tersedia untuk kelas {student.kelas}.
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -241,6 +351,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* Student's Own Chronological Exam History */}

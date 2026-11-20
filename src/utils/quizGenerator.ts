@@ -233,29 +233,43 @@ function getSectionTitle(num: number): string {
 // TASHRIF ISTILAHI (Bagian 1-6)
 // ===========================================================================
 
-function buildSection1Questions(bab: ShorofBab, count: number): QuizQuestion[] {
-  const targetKeys: (keyof MauzunVerb['istilahi'])[] = [
-    'mudhari',
-    'mashdar',
-    'isim_fail',
-    'isim_maful',
-    'fiil_amr',
-    'fiil_nahyi',
-    'isim_zaman_makan',
-    'madhi_majhul',
-    'mudhari_majhul',
-  ];
+const NON_MAJHUL_ISTILAHI_KEYS: (keyof MauzunVerb['istilahi'])[] = [
+  'madhi',
+  'mudhari',
+  'mashdar',
+  'isim_fail',
+  'isim_maful',
+  'fiil_amr',
+  'fiil_nahyi',
+  'isim_zaman_makan',
+  'isim_alat',
+];
 
+const NON_MAJHUL_TARGET_KEYS: (keyof MauzunVerb['istilahi'])[] = [
+  'mudhari',
+  'mashdar',
+  'isim_fail',
+  'isim_maful',
+  'fiil_amr',
+  'fiil_nahyi',
+  'isim_zaman_makan',
+];
+
+const NON_MAJHUL_SHIGHAT_LIST = SHIGHAT_LIST.filter(
+  (s) => s.key !== 'madhi_majhul' && s.key !== 'mudhari_majhul'
+);
+
+function buildSection1Questions(bab: ShorofBab, count: number): QuizQuestion[] {
   const perVerbPools: QuizQuestion[][] = bab.mauzunList.map((verb) => {
     const pool: QuizQuestion[] = [];
-    targetKeys.forEach((tKey) => {
+    NON_MAJHUL_TARGET_KEYS.forEach((tKey) => {
       const answer = verb.istilahi[tKey];
       if (!answer || answer.startsWith('—')) return;
       const targetMeta = SHIGHAT_LIST.find((s) => s.key === tKey)!;
 
       const distractorPool = Array.from(
         new Set(
-          Object.values(verb.istilahi).filter(
+          NON_MAJHUL_ISTILAHI_KEYS.map((k) => verb.istilahi[k]).filter(
             (w) => w && !w.startsWith('—') && w !== answer
           )
         )
@@ -292,31 +306,30 @@ function buildSection1Questions(bab: ShorofBab, count: number): QuizQuestion[] {
 }
 
 function buildSection2Questions(bab: ShorofBab, count: number): QuizQuestion[] {
-  const keys: (keyof MauzunVerb['istilahi'])[] = [
-    'mudhari',
-    'mashdar',
-    'isim_fail',
-    'isim_maful',
-    'fiil_amr',
-    'fiil_nahyi',
-    'isim_zaman_makan',
-    'madhi_majhul',
-    'mudhari_majhul',
-  ];
-
   const perVerbPools: QuizQuestion[][] = bab.mauzunList.map((verb) => {
     const pool: QuizQuestion[] = [];
     const rootStr = verb.rootLetters.join(' - ');
-    const swappedRoot1 = `${verb.rootLetters[0]} - ${verb.rootLetters[2]} - ${verb.rootLetters[1]}`;
-    const swappedRoot2 = `${verb.rootLetters[1]} - ${verb.rootLetters[0]} - ${verb.rootLetters[2]}`;
+    const swappedCandidates = Array.from(
+      new Set([
+        `${verb.rootLetters[0]} - ${verb.rootLetters[2]} - ${verb.rootLetters[1]}`,
+        `${verb.rootLetters[1]} - ${verb.rootLetters[0]} - ${verb.rootLetters[2]}`,
+        `${verb.rootLetters[2]} - ${verb.rootLetters[1]} - ${verb.rootLetters[0]}`,
+        `${verb.rootLetters[1]} - ${verb.rootLetters[2]} - ${verb.rootLetters[0]}`,
+      ])
+    ).filter((r) => r !== rootStr);
+    const swappedRoot1 = swappedCandidates[0] || `${verb.rootLetters[0]} - ${verb.rootLetters[1]} - م`;
+    const swappedRoot2 = swappedCandidates[1] || swappedRoot1;
 
-    keys.forEach((sKey) => {
+    NON_MAJHUL_TARGET_KEYS.forEach((sKey) => {
       const wordAr = verb.istilahi[sKey];
       if (!wordAr || wordAr.startsWith('—')) return;
       const meta = SHIGHAT_LIST.find((s) => s.key === sKey)!;
       const otherShighats = shuffleArray(
-        SHIGHAT_LIST.filter((s) => s.key !== sKey)
+        NON_MAJHUL_SHIGHAT_LIST.filter(
+          (s) => s.key !== sKey && verb.istilahi[s.key] !== wordAr
+        )
       );
+      if (otherShighats.length < 3) return;
 
       const distractorSpecs = [
         {
@@ -324,12 +337,12 @@ function buildSection2Questions(bab: ShorofBab, count: number): QuizQuestion[] {
           textSub: `Akar: ${rootStr} · ${otherShighats[0].labelAr}`,
         },
         {
-          textAr: meta.labelId,
-          textSub: `Akar: ${swappedRoot1} · ${meta.labelAr}`,
+          textAr: otherShighats[1].labelId,
+          textSub: `Akar: ${swappedRoot1} · ${otherShighats[1].labelAr}`,
         },
         {
-          textAr: otherShighats[1].labelId,
-          textSub: `Akar: ${swappedRoot2} · ${otherShighats[1].labelAr}`,
+          textAr: otherShighats[2].labelId,
+          textSub: `Akar: ${swappedRoot2} · ${otherShighats[2].labelAr}`,
         },
       ];
 
@@ -399,7 +412,7 @@ function buildSection3Questions(bab: ShorofBab, count: number): QuizQuestion[] {
       const distractors = shuffleArray(
         Array.from(
           new Set(
-            Object.values(verb.istilahi).filter(
+            NON_MAJHUL_ISTILAHI_KEYS.map((k) => verb.istilahi[k]).filter(
               (w) => w && !w.startsWith('—') && w !== answer
             )
           )

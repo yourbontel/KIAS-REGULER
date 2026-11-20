@@ -3,6 +3,7 @@ import { LogOut, KeyRound, ShieldCheck, GraduationCap } from 'lucide-react';
 import {
   DEMO_STUDENTS,
   INITIAL_STUDENTS,
+  ManualScoreRecord,
   Student,
   StudentClass,
   StudentGender,
@@ -13,6 +14,7 @@ import {
 import { BabExamView } from './components/BabExamView';
 import { StudentRosterView } from './components/StudentRosterView';
 import { ClassRecapView } from './components/ClassRecapView';
+import { ManualScoresView } from './components/ManualScoresView';
 import { LoginView } from './components/LoginView';
 import { StudentProgressView } from './components/StudentProgressView';
 import { RankingView } from './components/RankingView';
@@ -31,23 +33,37 @@ import {
   DEFAULT_EXAM_ACCESS,
   type ExamAccessConfig,
 } from './utils/examAccess';
+import { clearLocalExamDrafts } from './utils/examSession';
+import { matchesResetParams, type ResetAttemptsParams } from './utils/attemptFilter';
 import { loadStudentCredentialStatus, loadSuperadminUsername, requestStudentCredential, verifySuperadmin } from './utils/studentCredentials';
 import {
+  type ManualScoreInputEntry,
   clearAttemptsInDb,
+  deleteAttemptInDb,
   loadAttemptReviewFromDb,
   loadStudentData,
+  resetStudentAttemptsInDb,
+  saveManualScoresInDb,
   saveQuizAttemptToDb,
   toggleSetoranInDb,
   updateExamAccessInDb,
   upsertStudentInDb,
 } from './utils/studentData';
 
-type ActiveSection = 'practice' | 'roster' | 'recap' | 'access' | 'my_progress' | 'ranking';
+type ActiveSection =
+  | 'practice'
+  | 'roster'
+  | 'recap'
+  | 'uts_uas'
+  | 'access'
+  | 'my_progress'
+  | 'ranking';
 
 const STORAGE_KEYS = {
   STUDENTS: 'albarkah_shorof_students_v1',
   ATTEMPTS: 'albarkah_shorof_attempts_v1',
   SETORAN: 'albarkah_shorof_setoran_v1',
+  MANUAL_SCORES: 'albarkah_shorof_manual_scores_v1',
 };
 
 function mergeStudentRecords(base: Student[], dbRecords: Student[]): Student[] {
@@ -138,6 +154,19 @@ export default function App() {
     return {};
   });
 
+  // Persistent Manual UTS & UAS Scores per Student (Input by Superadmin)
+  const [manualScoresMap, setManualScoresMap] = useState<
+    Record<string, ManualScoreRecord>
+  >(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.MANUAL_SCORES);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return {};
+  });
+
   // Active cohort filter & selected student in Practice Sandbox
   const [filterClass, setFilterClass] = useState<StudentClass>('Reguler 1');
   const [filterGender, setFilterGender] = useState<StudentGender>('Ikhwan');
@@ -168,6 +197,14 @@ export default function App() {
       // ignore storage errors
     }
   }, [setoranMap]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.MANUAL_SCORES, JSON.stringify(manualScoresMap));
+    } catch {
+      // ignore storage errors
+    }
+  }, [manualScoresMap]);
 
   useEffect(() => {
     try {
@@ -207,6 +244,9 @@ export default function App() {
           });
         });
         setSetoranMap(data.setoranMap);
+        if (data.manualScoresMap) {
+          setManualScoresMap(data.manualScoresMap);
+        }
         setStudents(mergeStudentRecords(INITIAL_STUDENTS, data.studentRecords));
         if (data.examAccess) {
           setExamAccess(data.examAccess);
@@ -523,15 +563,49 @@ export default function App() {
     }
   };
 
-  const handleClearHistory = async () => {
+  const handleClearHistory = async (): Promise<string | null> => {
     const error = await clearAttemptsInDb(adminToken);
     if (error) {
       setDbSyncError(error);
-      window.alert(error);
-      return;
+      return error;
     }
+    clearLocalExamDrafts({});
     setDbSyncError(null);
     setAttempts([]);
+    return null;
+  };
+
+  const handleDeleteAttempt = async (attemptId: string): Promise<string | null> => {
+    const target = attempts.find((a) => a.id === attemptId);
+    const { error } = await deleteAttemptInDb(attemptId, adminToken);
+    if (error) {
+      setDbSyncError(error);
+      return error;
+    }
+    if (target) {
+      clearLocalExamDrafts({
+        studentId: target.studentId,
+        babId: target.babId,
+        sectionNumber: target.sectionNumber ?? null,
+      });
+    }
+    setDbSyncError(null);
+    setAttempts((prev) => prev.filter((a) => a.id !== attemptId));
+    return null;
+  };
+
+  const handleResetStudentAttempts = async (
+    params: ResetAttemptsParams
+  ): Promise<string | null> => {
+    const { error } = await resetStudentAttemptsInDb(params, adminToken);
+    if (error) {
+      setDbSyncError(error);
+      return error;
+    }
+    clearLocalExamDrafts(params);
+    setDbSyncError(null);
+    setAttempts((prev) => prev.filter((a) => !matchesResetParams(a, params)));
+    return null;
   };
 
   const handleUpdateExamAccess = async (nextConfig: ExamAccessConfig) => {
@@ -550,6 +624,51 @@ export default function App() {
       setExamAccess(saved);
     }
     setDbSyncError(null);
+  };
+
+  const handleSaveManualScores = async (
+    entries: ManualScoreInputEntry[]
+  ): Promise<string | null> => {
+    const previous = manualScoresMap;
+    const nowIso = new Date().toISOString();
+    setManualScoresMap((prev) => {
+      const next = { ...prev };
+      entries.forEach((item) => {
+        if (item.utsScore === null && item.uasScore === null) {
+          delete next[item.studentId];
+        } else {
+          next[item.studentId] = {
+            studentId: item.studentId,
+            utsScore: item.utsScore,
+            uasScore: item.uasScore,
+            updatedAt: nowIso,
+          };
+        }
+      });
+      return next;
+    });
+
+    const { saved, error } = await saveManualScoresInDb(entries, adminToken);
+    if (error) {
+      setManualScoresMap(previous);
+      setDbSyncError(error);
+      return error;
+    }
+    if (saved) {
+      setManualScoresMap((prev) => {
+        const next = { ...prev };
+        Object.entries(saved).forEach(([studentId, rec]) => {
+          if (rec === null) {
+            delete next[studentId];
+          } else {
+            next[studentId] = rec;
+          }
+        });
+        return next;
+      });
+    }
+    setDbSyncError(null);
+    return null;
   };
 
   // Counts for the 4 separated groups
@@ -582,6 +701,7 @@ export default function App() {
   const navItems: { id: ActiveSection; label: string; mobileLabel: string }[] = isSuperadmin
     ? [
         { id: 'recap', label: 'Rekap Nilai Per Bab', mobileLabel: 'Rekap Nilai' },
+        { id: 'uts_uas', label: 'UTS & UAS Sem. 1', mobileLabel: 'UTS/UAS Sem.1' },
         { id: 'access', label: 'Akses Buka Soal', mobileLabel: 'Akses Soal' },
         { id: 'ranking', label: 'Peringkat Siswa', mobileLabel: 'Peringkat' },
         { id: 'roster', label: 'Data Siswa & Kelas', mobileLabel: 'Data Siswa' },
@@ -705,6 +825,8 @@ export default function App() {
                   'Daftar Siswa Terpisah: Reguler 1 & 2 (Ikhwan & Akhwat)'}
                 {currentSection === 'recap' &&
                   'Rekapitulasi Nilai Ujian Per Bab Siswa'}
+                {currentSection === 'uts_uas' &&
+                  'Input Nilai UTS & UAS Semester 1 · Reguler 1 (50% Web · 10% UTS · 40% UAS)'}
                 {currentSection === 'access' &&
                   'Kontrol Akses Buka & Tutup Soal Ujian'}
                 {currentSection === 'my_progress' &&
@@ -847,6 +969,7 @@ export default function App() {
             onUpdateStudentGroup={handleUpdateStudentGroup}
             studentPasswords={studentPasswords}
             onResetStudentPassword={handleResetStudentPassword}
+            onResetStudentAttempts={handleResetStudentAttempts}
           />
         )}
 
@@ -855,7 +978,21 @@ export default function App() {
             students={students}
             attempts={attempts}
             setoranMap={setoranMap}
+            manualScoresMap={manualScoresMap}
+            onOpenManualScores={() => setActiveSection('uts_uas')}
+            onDeleteAttempt={handleDeleteAttempt}
+            onResetStudentAttempts={handleResetStudentAttempts}
             onClearHistory={handleClearHistory}
+          />
+        )}
+
+        {isSuperadmin && currentSection === 'uts_uas' && (
+          <ManualScoresView
+            students={students}
+            attempts={attempts}
+            manualScoresMap={manualScoresMap}
+            selectedGender={filterClass === 'Reguler 1' ? filterGender : undefined}
+            onSaveManualScores={handleSaveManualScores}
           />
         )}
 
@@ -864,6 +1001,7 @@ export default function App() {
             student={loggedInStudent}
             attempts={attempts}
             setoran={setoranMap[loggedInStudent.id]}
+            manualScore={manualScoresMap[loggedInStudent.id]}
             examAccess={examAccess}
             onLoadAttemptReview={handleLoadAttemptReview}
             onStartBabExam={(babId) => {
@@ -878,6 +1016,7 @@ export default function App() {
             students={students}
             attempts={attempts}
             setoranMap={setoranMap}
+            manualScoresMap={manualScoresMap}
             loggedInStudent={loggedInStudent}
             isSuperadmin={isSuperadmin}
             selectedClass={filterClass}
@@ -901,6 +1040,14 @@ export default function App() {
                   className="hover:text-slate-900 transition-colors"
                 >
                   Rekap Nilai Per Bab
+                </button>
+                <span aria-hidden="true">·</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('uts_uas')}
+                  className="hover:text-slate-900 transition-colors"
+                >
+                  UTS &amp; UAS Sem. 1
                 </button>
                 <span aria-hidden="true">·</span>
                 <button

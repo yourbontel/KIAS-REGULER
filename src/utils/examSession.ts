@@ -6,7 +6,7 @@ import {
 } from '../data/students';
 import type { QuizQuestion } from './quizGenerator';
 
-const EXAM_DRAFT_PREFIX = 'albarkah_shorof_exam_draft_v1';
+const EXAM_DRAFT_PREFIX = 'albarkah_shorof_exam_draft_v2';
 
 export const STUDENT_DATA_STORAGE_KEYS = {
   STUDENTS: 'albarkah_shorof_students_v1',
@@ -112,6 +112,24 @@ function getDraftKey(
   return `${EXAM_DRAFT_PREFIX}:${studentId}:${babId}:${sectionNumber ?? 'full'}`;
 }
 
+function isDraftCompatible(questions: QuizQuestion[]): boolean {
+  const majhulPattern = /majhul|مجهول|مَجْهُول|kata kerja pasif/i;
+  for (const q of questions) {
+    const combined = [
+      q.id,
+      q.promptId,
+      q.arabicHighlight,
+      q.arabicSubtext,
+      q.explanation,
+      ...(q.options || []).flatMap((o) => [o.textAr, o.textSub || '']),
+    ].join(' ');
+    if (majhulPattern.test(combined)) return false;
+    const textArs = (q.options || []).map((o) => o.textAr);
+    if (new Set(textArs).size !== textArs.length) return false;
+  }
+  return true;
+}
+
 export function loadExamDraft(
   studentId: string,
   babId: string,
@@ -127,6 +145,7 @@ export function loadExamDraft(
       parsed.babId === babId &&
       Array.isArray(parsed.questions) &&
       parsed.questions.length > 0 &&
+      isDraftCompatible(parsed.questions) &&
       parsed.answers &&
       typeof parsed.answers === 'object'
     ) {
@@ -156,6 +175,53 @@ export function clearExamDraft(
 ): void {
   try {
     localStorage.removeItem(getDraftKey(studentId, babId, sectionNumber));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+import type { ResetAttemptsParams } from './attemptFilter';
+
+export function clearLocalExamDrafts(params: ResetAttemptsParams): void {
+  try {
+    const prefix = `${EXAM_DRAFT_PREFIX}:`;
+    const studentSet =
+      params.studentIds && params.studentIds.length > 0
+        ? new Set(params.studentIds)
+        : null;
+    const toRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(prefix)) continue;
+      const rest = key.slice(prefix.length);
+      const [keyStudentId, keyBabId, keySection] = rest.split(':');
+      if (!keyStudentId || !keyBabId || !keySection) continue;
+
+      if (params.studentId && params.studentId !== 'all' && keyStudentId !== params.studentId) {
+        continue;
+      }
+      if (studentSet && !studentSet.has(keyStudentId)) {
+        continue;
+      }
+      if (params.babId && keyBabId !== params.babId) {
+        continue;
+      }
+      if (params.sectionNumber === null && keySection !== 'full') {
+        continue;
+      }
+      if (typeof params.sectionNumber === 'number' && keySection !== String(params.sectionNumber)) {
+        continue;
+      }
+      if (params.tashrifType === 'istilahi') {
+        const n = Number(keySection);
+        if (!Number.isInteger(n) || n < 1 || n > 6) continue;
+      } else if (params.tashrifType === 'lughawi') {
+        const n = Number(keySection);
+        if (!Number.isInteger(n) || n < 7 || n > 12) continue;
+      }
+      toRemove.push(key);
+    }
+    toRemove.forEach((k) => localStorage.removeItem(k));
   } catch {
     // ignore storage errors
   }

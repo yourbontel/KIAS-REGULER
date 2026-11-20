@@ -352,7 +352,17 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
           </span>
         </div>
 
-        {groupedBabs.map((group) => (
+        {groupedBabs.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-xl p-8 text-center space-y-1.5">
+            <div className="text-sm font-bold text-slate-800">
+              Belum Ada Soal Ujian untuk {activeClass}
+            </div>
+            <p className="text-xs text-slate-500">
+              Soal ujian yang tersedia saat ini dikhususkan untuk kelas Reguler 1. Soal untuk {activeClass} belum ditambahkan.
+            </p>
+          </div>
+        ) : (
+          groupedBabs.map((group) => (
           <div key={group.kategori} className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
               <h4 className="text-sm font-bold text-slate-800">{group.kategori}</h4>
@@ -737,7 +747,8 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
               })}
             </div>
           </div>
-        ))}
+        ))
+        )}
       </div>
 
       {/* Popup Verifikasi Mulai Ujian Bagian */}

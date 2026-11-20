@@ -6,6 +6,7 @@ import {
   Check,
   ArrowLeftRight,
   KeyRound,
+  RotateCcw,
 } from 'lucide-react';
 import {
   Student,
@@ -15,6 +16,16 @@ import {
   SetoranRecord,
 } from '../data/students';
 import { StudentPasswordMap } from '../utils/auth';
+import {
+  buildQuestionTypeOptions,
+  matchesResetParams,
+  questionTypeToParams,
+  type QuestionTypeFilter,
+  type ResetAttemptsParams,
+} from '../utils/attemptFilter';
+import { ALL_SHOROF_BABS } from '../data/shorofData';
+import { ResetConfirmModal } from './ResetConfirmModal';
+import { SuccessToast } from './SuccessToast';
 
 interface StudentRosterViewProps {
   students: Student[];
@@ -29,6 +40,7 @@ interface StudentRosterViewProps {
   ) => void;
   studentPasswords?: StudentPasswordMap;
   onResetStudentPassword?: (studentId: string) => Promise<unknown>;
+  onResetStudentAttempts?: (params: ResetAttemptsParams) => Promise<string | null>;
 }
 
 const CORE_BABS = ['Bab 1', 'Bab 2', 'Bab 3', 'Bab 4', 'Bab 5', 'Bab 6'];
@@ -42,6 +54,7 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
   onUpdateStudentGroup,
   studentPasswords = {},
   onResetStudentPassword,
+  onResetStudentAttempts,
 }) => {
   const [selectedClass, setSelectedClass] = useState<StudentClass>('Reguler 1');
   const [genderFilter, setGenderFilter] = useState<'Split' | StudentGender>('Split');
@@ -53,6 +66,89 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
   const [newKelas, setNewKelas] = useState<StudentClass>('Reguler 1');
   const [newGender, setNewGender] = useState<StudentGender>('Ikhwan');
   const [newKota, setNewKota] = useState('');
+
+  // Reset confirmation popup state
+  const [pendingResetStudent, setPendingResetStudent] = useState<{
+    student: Student;
+    attemptCount: number;
+  } | null>(null);
+  const [modalBabFilter, setModalBabFilter] = useState<'all' | string>('all');
+  const [modalQuestionType, setModalQuestionType] = useState<QuestionTypeFilter>('all');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetSuccessText, setResetSuccessText] = useState<string | null>(null);
+
+  const pendingStudentAttempts = useMemo(() => {
+    if (!pendingResetStudent) return [];
+    return attempts.filter((a) => a.studentId === pendingResetStudent.student.id);
+  }, [attempts, pendingResetStudent]);
+
+  const modalBabOptions = useMemo(() => {
+    const counts = new Map<string, { kode: string; count: number }>();
+    pendingStudentAttempts.forEach((a) => {
+      const meta = ALL_SHOROF_BABS.find((b) => b.id === a.babId);
+      const prev = counts.get(a.babId);
+      counts.set(a.babId, {
+        kode: meta?.kode || a.babId,
+        count: (prev?.count || 0) + 1,
+      });
+    });
+    return Array.from(counts.entries()).map(([babId, info]) => ({
+      babId,
+      kode: info.kode,
+      count: info.count,
+    }));
+  }, [pendingStudentAttempts]);
+
+  const modalBabScopedAttempts = useMemo(() => {
+    if (modalBabFilter === 'all') return pendingStudentAttempts;
+    return pendingStudentAttempts.filter((a) => a.babId === modalBabFilter);
+  }, [pendingStudentAttempts, modalBabFilter]);
+
+  const modalQuestionTypeOptions = useMemo(
+    () => buildQuestionTypeOptions(modalBabScopedAttempts),
+    [modalBabScopedAttempts]
+  );
+
+  const activeModalResetParams = useMemo<ResetAttemptsParams | null>(() => {
+    if (!pendingResetStudent) return null;
+    return {
+      studentId: pendingResetStudent.student.id,
+      ...(modalBabFilter !== 'all' ? { babId: modalBabFilter } : {}),
+      ...questionTypeToParams(modalQuestionType),
+    };
+  }, [pendingResetStudent, modalBabFilter, modalQuestionType]);
+
+  const modalMatchingCount = useMemo(() => {
+    if (!activeModalResetParams) return 0;
+    return pendingStudentAttempts.filter((a) =>
+      matchesResetParams(a, activeModalResetParams)
+    ).length;
+  }, [pendingStudentAttempts, activeModalResetParams]);
+
+  const handleConfirmResetStudent = async () => {
+    if (!onResetStudentAttempts || !pendingResetStudent || !activeModalResetParams) return;
+    setResetLoading(true);
+    setResetError(null);
+    setResetSuccessText(null);
+    const err = await onResetStudentAttempts(activeModalResetParams);
+    setResetLoading(false);
+    if (err) {
+      setResetError(err);
+      return;
+    }
+    const babLabel =
+      modalBabFilter === 'all'
+        ? 'Semua Bab'
+        : modalBabOptions.find((b) => b.babId === modalBabFilter)?.kode || modalBabFilter;
+    const typeLabel =
+      modalQuestionTypeOptions.find((o) => o.value === modalQuestionType)?.shortLabel ||
+      'Semua Jenis Soal';
+    setResetSuccessText(
+      `Pengerjaan soal (${babLabel} · ${typeLabel}, ${modalMatchingCount} sesi) milik ${pendingResetStudent.student.name} berhasil direset.`
+    );
+    setPendingResetStudent(null);
+  };
 
   const classStudents = useMemo(() => {
     return students.filter((s) => {
@@ -242,6 +338,24 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="inline-flex items-center justify-end gap-1.5">
+                        {stats.attemptCount > 0 && onResetStudentAttempts && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setResetError(null);
+                              setModalBabFilter('all');
+                              setModalQuestionType('all');
+                              setPendingResetStudent({
+                                student: st,
+                                attemptCount: stats.attemptCount,
+                              });
+                            }}
+                            title="Reset pengerjaan soal siswa"
+                            className="p-2 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                         {hasPassword && onResetStudentPassword && (
                           <button
                             type="button"
@@ -464,6 +578,25 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
         )}
       </div>
 
+      {resetSuccessText && (
+        <div
+          role="status"
+          className="px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between gap-3"
+        >
+          <div className="flex items-center gap-2 font-medium">
+            <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{resetSuccessText}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setResetSuccessText(null)}
+            className="text-emerald-700 hover:text-emerald-900 font-semibold shrink-0"
+          >
+            Tutup
+          </button>
+        </div>
+      )}
+
       {/* Separated Roster View: Split 2-Column (Ikhwan | Akhwat) or Focused Single Group */}
       {genderFilter === 'Split' ? (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
@@ -491,6 +624,92 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
           akhwatStudents
         )
       )}
+
+      <ResetConfirmModal
+        isOpen={Boolean(pendingResetStudent)}
+        title="Reset Pengerjaan Soal?"
+        subtitle="Pilih cakupan bab/jenis soal lalu konfirmasi sebelum menghapus riwayat siswa"
+        targetLabel={pendingResetStudent?.student.name || ''}
+        detailText={
+          pendingResetStudent
+            ? `${pendingResetStudent.student.kelas} · ${pendingResetStudent.student.gender} · ${modalMatchingCount} sesi akan direset`
+            : ''
+        }
+        warningText={
+          modalBabFilter === 'all' && modalQuestionType === 'all'
+            ? 'Apakah Anda yakin ingin mereset seluruh pengerjaan soal milik siswa ini? Data nilai ujian sebelumnya akan dihapus dan siswa dapat mengerjakan ulang soal.'
+            : 'Apakah Anda yakin ingin mereset pengerjaan soal sesuai jenis soal yang dipilih? Data nilai sebelumnya pada cakupan tersebut akan dihapus agar siswa dapat mengerjakan ulang.'
+        }
+        confirmLabel="Ya, Reset Soal"
+        confirmDisabled={modalMatchingCount === 0}
+        loading={resetLoading}
+        error={resetError}
+        onCancel={() => {
+          if (!resetLoading) setPendingResetStudent(null);
+        }}
+        onConfirm={() => void handleConfirmResetStudent()}
+      >
+        {pendingResetStudent && (
+          <div className="space-y-2.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <div>
+              <label
+                htmlFor="roster-reset-bab-select"
+                className="block text-[11px] font-semibold text-slate-600 mb-1"
+              >
+                Pilih Bab
+              </label>
+              <select
+                id="roster-reset-bab-select"
+                value={modalBabFilter}
+                onChange={(e) => {
+                  setModalBabFilter(e.target.value);
+                  setModalQuestionType('all');
+                }}
+                disabled={resetLoading}
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg"
+              >
+                <option value="all">
+                  Semua Bab ({pendingStudentAttempts.length} sesi)
+                </option>
+                {modalBabOptions.map((opt) => (
+                  <option key={opt.babId} value={opt.babId}>
+                    {opt.kode} ({opt.count} sesi)
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor="roster-reset-type-select"
+                className="block text-[11px] font-semibold text-slate-600 mb-1"
+              >
+                Pilih Jenis Soal
+              </label>
+              <select
+                id="roster-reset-type-select"
+                value={modalQuestionType}
+                onChange={(e) =>
+                  setModalQuestionType(e.target.value as QuestionTypeFilter)
+                }
+                disabled={resetLoading}
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg"
+              >
+                {modalQuestionTypeOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+      </ResetConfirmModal>
+
+      <SuccessToast
+        title="Reset Soal Berhasil"
+        message={resetSuccessText}
+        onClose={() => setResetSuccessText(null)}
+      />
     </div>
   );
 };

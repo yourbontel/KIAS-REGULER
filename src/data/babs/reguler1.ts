@@ -1,20 +1,4 @@
 import type { MauzunVerb, ShorofBab } from './types';
-import { SHOROF_BABS_REGULER_2 } from './reguler2';
-
-function cloneReguler2Bab(
-  sourceId: string,
-  overrides: Pick<ShorofBab, 'id' | 'kode' | 'namaBab' | 'kategori'>
-): ShorofBab {
-  const base = SHOROF_BABS_REGULER_2.find((b) => b.id === sourceId);
-  if (!base) {
-    throw new Error(`Missing base bab: ${sourceId}`);
-  }
-  return {
-    ...base,
-    ...overrides,
-    bankBabId: base.id,
-  };
-}
 
 function buildFaaalaVerb(
   id: string,
@@ -130,6 +114,234 @@ const MAZID1_BAB2: ShorofBab = {
   ],
 };
 
+function buildFathahMudhariLughawi(
+  madhiStem: string,
+  mudhariStem: string,
+  amrStem: string,
+  lamLetter: string
+): Pick<MauzunVerb, 'lughawiMadhi' | 'lughawiMudhari' | 'lughawiAmr'> {
+  const nunNiswahEnd = lamLetter === 'ن' ? 'َّ' : 'ْنَ';
+  const nahnuMadhiEnd = lamLetter === 'ن' ? 'َّا' : 'ْنَا';
+  return {
+    lughawiMadhi: [
+      `${madhiStem}َ`,
+      `${madhiStem}َا`,
+      `${madhiStem}ُوا`,
+      `${madhiStem}َتْ`,
+      `${madhiStem}َتَا`,
+      `${madhiStem}${nunNiswahEnd}`,
+      `${madhiStem}ْتَ`,
+      `${madhiStem}ْتُمَا`,
+      `${madhiStem}ْتُمْ`,
+      `${madhiStem}ْتِ`,
+      `${madhiStem}ْتُمَا`,
+      `${madhiStem}ْتُنَّ`,
+      `${madhiStem}ْتُ`,
+      `${madhiStem}${nahnuMadhiEnd}`,
+    ],
+    lughawiMudhari: [
+      `يَ${mudhariStem}ُ`,
+      `يَ${mudhariStem}َانِ`,
+      `يَ${mudhariStem}ُونَ`,
+      `تَ${mudhariStem}ُ`,
+      `تَ${mudhariStem}َانِ`,
+      `يَ${mudhariStem}${nunNiswahEnd}`,
+      `تَ${mudhariStem}ُ`,
+      `تَ${mudhariStem}َانِ`,
+      `تَ${mudhariStem}ُونَ`,
+      `تَ${mudhariStem}ِينَ`,
+      `تَ${mudhariStem}َانِ`,
+      `تَ${mudhariStem}${nunNiswahEnd}`,
+      `أَ${mudhariStem}ُ`,
+      `نَ${mudhariStem}ُ`,
+    ],
+    lughawiAmr: [
+      `${amrStem}ْ`,
+      `${amrStem}َا`,
+      `${amrStem}ُوا`,
+      `${amrStem}ِي`,
+      `${amrStem}َا`,
+      `${amrStem}${nunNiswahEnd}`,
+    ],
+  };
+}
+
+function buildTafaalaVerb(
+  id: string,
+  rootLetters: [string, string, string],
+  artiDasar: string,
+  mashdar: string
+): MauzunVerb {
+  const [f, a, l] = rootLetters;
+  if (l === 'أ') {
+    return {
+      id,
+      babId: 'mazid2-bab-1',
+      rootLetters,
+      artiDasar,
+      istilahi: {
+        madhi: `تَ${f}َ${a}َّأَ`,
+        mudhari: `يَتَ${f}َ${a}َّأُ`,
+        mashdar,
+        isim_fail: `مُتَ${f}َ${a}ِّئٌ`,
+        isim_maful: `مُتَ${f}َ${a}َّأٌ`,
+        fiil_amr: `تَ${f}َ${a}َّأْ`,
+        fiil_nahyi: `لَا تَتَ${f}َ${a}َّأْ`,
+        isim_zaman_makan: `مُتَ${f}َ${a}َّأٌ`,
+        isim_alat: '—',
+        madhi_majhul: `تُ${f}ُ${a}ِّئَ`,
+        mudhari_majhul: `يُتَ${f}َ${a}َّأُ`,
+      },
+      lughawiMadhi: [
+        `تَ${f}َ${a}َّأَ`, `تَ${f}َ${a}َّأَا`, `تَ${f}َ${a}َّؤُوا`,
+        `تَ${f}َ${a}َّأَتْ`, `تَ${f}َ${a}َّأَتَا`, `تَ${f}َ${a}َّأْنَ`,
+        `تَ${f}َ${a}َّأْتَ`, `تَ${f}َ${a}َّأْتُمَا`, `تَ${f}َ${a}َّأْتُمْ`,
+        `تَ${f}َ${a}َّأْتِ`, `تَ${f}َ${a}َّأْتُمَا`, `تَ${f}َ${a}َّأْتُنَّ`,
+        `تَ${f}َ${a}َّأْتُ`, `تَ${f}َ${a}َّأْنَا`,
+      ],
+      lughawiMudhari: [
+        `يَتَ${f}َ${a}َّأُ`, `يَتَ${f}َ${a}َّأَانِ`, `يَتَ${f}َ${a}َّؤُونَ`,
+        `تَتَ${f}َ${a}َّأُ`, `تَتَ${f}َ${a}َّأَانِ`, `يَتَ${f}َ${a}َّأْنَ`,
+        `تَتَ${f}َ${a}َّأُ`, `تَتَ${f}َ${a}َّأَانِ`, `تَتَ${f}َ${a}َّؤُونَ`,
+        `تَتَ${f}َ${a}َّئِينَ`, `تَتَ${f}َ${a}َّأَانِ`, `تَتَ${f}َ${a}َّأْنَ`,
+        `أَتَ${f}َ${a}َّأُ`, `نَتَ${f}َ${a}َّأُ`,
+      ],
+      lughawiAmr: [
+        `تَ${f}َ${a}َّأْ`, `تَ${f}َ${a}َّأَا`, `تَ${f}َ${a}َّؤُوا`,
+        `تَ${f}َ${a}َّئِي`, `تَ${f}َ${a}َّأَا`, `تَ${f}َ${a}َّأْنَ`,
+      ],
+    };
+  }
+
+  const stem = `تَ${f}َ${a}َّ${l}`;
+  const majhulFa = f === 'أ' ? 'ؤ' : f;
+  return {
+    id,
+    babId: 'mazid2-bab-1',
+    rootLetters,
+    artiDasar,
+    istilahi: {
+      madhi: `${stem}َ`,
+      mudhari: `يَ${stem}ُ`,
+      mashdar,
+      isim_fail: `مُتَ${f}َ${a}ِّ${l}ٌ`,
+      isim_maful: `مُ${stem}ٌ`,
+      fiil_amr: `${stem}ْ`,
+      fiil_nahyi: `لَا تَ${stem}ْ`,
+      isim_zaman_makan: `مُ${stem}ٌ`,
+      isim_alat: '—',
+      madhi_majhul: `تُ${majhulFa}ُ${a}ِّ${l}َ`,
+      mudhari_majhul: `يُ${stem}ُ`,
+    },
+    ...buildFathahMudhariLughawi(stem, stem, stem, l),
+  };
+}
+
+function buildTafaaalaVerb(
+  id: string,
+  rootLetters: [string, string, string],
+  artiDasar: string,
+  mashdar: string
+): MauzunVerb {
+  const [f, a, l] = rootLetters;
+  const isMahmuzAin = a === 'أ';
+  const ainLetter = isMahmuzAin ? 'ء' : a;
+  const stem = `تَ${f}َا${ainLetter}َ${l}`;
+  const failAin = isMahmuzAin ? 'ئ' : a;
+  const majhulAin = isMahmuzAin ? 'ئ' : a;
+
+  return {
+    id,
+    babId: 'mazid2-bab-2',
+    rootLetters,
+    artiDasar,
+    istilahi: {
+      madhi: `${stem}َ`,
+      mudhari: `يَ${stem}ُ`,
+      mashdar,
+      isim_fail: `مُتَ${f}َا${failAin}ِ${l}ٌ`,
+      isim_maful: `مُ${stem}ٌ`,
+      fiil_amr: `${stem}ْ`,
+      fiil_nahyi: `لَا تَ${stem}ْ`,
+      isim_zaman_makan: `مُ${stem}ٌ`,
+      isim_alat: '—',
+      madhi_majhul: `تُ${f}ُو${majhulAin}ِ${l}َ`,
+      mudhari_majhul: `يُ${stem}ُ`,
+    },
+    ...buildFathahMudhariLughawi(stem, stem, stem, l),
+  };
+}
+
+function buildIftaalaVerb(
+  id: string,
+  rootLetters: [string, string, string],
+  artiDasar: string,
+  mashdar: string
+): MauzunVerb {
+  const [f, a, l] = rootLetters;
+  const isAssimilatedTa = f === 'و' || f === 'ت';
+  const madhiStem = isAssimilatedTa ? `اِتَّ${a}َ${l}` : `اِ${f}ْتَ${a}َ${l}`;
+  const mudhariStem = isAssimilatedTa ? `تَّ${a}ِ${l}` : `${f}ْتَ${a}ِ${l}`;
+  const amrStem = isAssimilatedTa ? `اِتَّ${a}ِ${l}` : `اِ${f}ْتَ${a}ِ${l}`;
+  const isimPrefix = isAssimilatedTa ? `مُتَّ${a}` : `مُ${f}ْتَ${a}`;
+  const majhulMadhi = isAssimilatedTa ? `اُتُّ${a}ِ${l}َ` : `اُ${f}ْتُ${a}ِ${l}َ`;
+  const majhulMudhari = isAssimilatedTa ? `يُتَّ${a}َ${l}ُ` : `يُ${f}ْتَ${a}َ${l}ُ`;
+
+  return {
+    id,
+    babId: 'mazid2-bab-3',
+    rootLetters,
+    artiDasar,
+    istilahi: {
+      madhi: `${madhiStem}َ`,
+      mudhari: `يَ${mudhariStem}ُ`,
+      mashdar,
+      isim_fail: `${isimPrefix}ِ${l}ٌ`,
+      isim_maful: `${isimPrefix}َ${l}ٌ`,
+      fiil_amr: `${amrStem}ْ`,
+      fiil_nahyi: `لَا تَ${mudhariStem}ْ`,
+      isim_zaman_makan: `${isimPrefix}َ${l}ٌ`,
+      isim_alat: '—',
+      madhi_majhul: majhulMadhi,
+      mudhari_majhul: majhulMudhari,
+    },
+    ...buildFathahMudhariLughawi(madhiStem, mudhariStem, amrStem, l),
+  };
+}
+
+function buildInfaalaVerb(
+  id: string,
+  rootLetters: [string, string, string],
+  artiDasar: string,
+  mashdar: string
+): MauzunVerb {
+  const [f, a, l] = rootLetters;
+  const madhiStem = `اِنْ${f}َ${a}َ${l}`;
+  const mudhariStem = `نْ${f}َ${a}ِ${l}`;
+  const amrStem = `اِنْ${f}َ${a}ِ${l}`;
+
+  return {
+    id,
+    babId: 'mazid2-bab-4',
+    rootLetters,
+    artiDasar,
+    istilahi: {
+      madhi: `${madhiStem}َ`,
+      mudhari: `يَ${mudhariStem}ُ`,
+      mashdar,
+      isim_fail: `مُنْ${f}َ${a}ِ${l}ٌ`,
+      isim_maful: `مُنْ${f}َ${a}َ${l}ٌ`,
+      fiil_amr: `${amrStem}ْ`,
+      fiil_nahyi: `لَا تَ${mudhariStem}ْ`,
+      isim_zaman_makan: `مُنْ${f}َ${a}َ${l}ٌ`,
+      isim_alat: '—',
+      madhi_majhul: `اُنْ${f}ُ${a}ِ${l}َ`,
+      mudhari_majhul: `يُنْ${f}َ${a}َ${l}ُ`,
+    },
+    ...buildFathahMudhariLughawi(madhiStem, mudhariStem, amrStem, l),
+  };
+}
+
 const MAZID2_BAB1: ShorofBab = {
   id: 'mazid2-bab-1',
   kode: 'Mazid 2 · Bab 1',
@@ -138,6 +350,8 @@ const MAZID2_BAB1: ShorofBab = {
   wazanAr: 'تَفَعَّلَ - يَتَفَعَّلُ',
   wazanLatin: "Tafa''ala - Yatafa''alu",
   kaidahAinFiil: "Tambahan Ta' di awal dan Tasydid pada 'Ain Fi'il (sering bermakna muthawa'ah / bertahap)",
+  questionsPerSection: 10,
+  sectionedExam: true,
   wazanIstilahi: {
     madhi: 'تَفَعَّلَ',
     mudhari: 'يَتَفَعَّلُ',
@@ -152,40 +366,15 @@ const MAZID2_BAB1: ShorofBab = {
     mudhari_majhul: 'يُتَفَعَّلُ',
   },
   mauzunList: [
-    {
-      id: 'taallama',
-      babId: 'mazid2-bab-1',
-      rootLetters: ['ع', 'ل', 'م'],
-      artiDasar: 'Belajar / Mempelajari',
-      istilahi: {
-        madhi: 'تَعَلَّمَ',
-        mudhari: 'يَتَعَلَّمُ',
-        mashdar: 'تَعَلُّمًا',
-        isim_fail: 'مُتَعَلِّمٌ',
-        isim_maful: 'مُتَعَلَّمٌ',
-        fiil_amr: 'تَعَلَّمْ',
-        fiil_nahyi: 'لَا تَتَعَلَّمْ',
-        isim_zaman_makan: 'مُتَعَلَّمٌ',
-        isim_alat: '—',
-        madhi_majhul: 'تُعُلِّمَ',
-        mudhari_majhul: 'يُتَعَلَّمُ',
-      },
-      lughawiMadhi: [
-        'تَعَلَّمَ', 'تَعَلَّمَا', 'تَعَلَّمُوا',
-        'تَعَلَّمَتْ', 'تَعَلَّمَتَا', 'تَعَلَّمْنَ',
-        'تَعَلَّمْتَ', 'تَعَلَّمْتُمَا', 'تَعَلَّمْتُمْ',
-        'تَعَلَّمْتِ', 'تَعَلَّمْتُمَا', 'تَعَلَّمْتُنَّ',
-        'تَعَلَّمْتُ', 'تَعَلَّمْنَا',
-      ],
-      lughawiMudhari: [
-        'يَتَعَلَّمُ', 'يَتَعَلَّمَانِ', 'يَتَعَلَّمُونَ',
-        'تَتَعَلَّمُ', 'تَتَعَلَّمَانِ', 'يَتَعَلَّمْنَ',
-        'تَتَعَلَّمُ', 'تَتَعَلَّمَانِ', 'تَتَعَلَّمُونَ',
-        'تَتَعَلَّمِينَ', 'تَتَعَلَّمَانِ', 'تَتَعَلَّمْنَ',
-        'أَتَعَلَّمُ', 'نَتَعَلَّمُ',
-      ],
-      lughawiAmr: ['تَعَلَّمْ', 'تَعَلَّمَا', 'تَعَلَّمُوا', 'تَعَلَّمِي', 'تَعَلَّمَا', 'تَعَلَّمْنَ'],
-    },
+    buildTafaalaVerb('r1-tafarraqa', ['ف', 'ر', 'ق'], 'Berpecah belah', 'تَفَرُّقًا'),
+    buildTafaalaVerb('r1-taakhkhara', ['أ', 'خ', 'ر'], 'Terlambat', 'تَأَخُّرًا'),
+    buildTafaalaVerb('r1-tawadhdhaa', ['و', 'ض', 'أ'], 'Berwudhu', 'تَوَضُّؤًا'),
+    buildTafaalaVerb('r1-tadzakkara', ['ذ', 'ك', 'ر'], 'Mengingat', 'تَذَكُّرًا'),
+    buildTafaalaVerb('r1-tabayyana', ['ب', 'ي', 'ن'], 'Mencari kejelasan', 'تَبَيُّنًا'),
+    buildTafaalaVerb('r1-tabarraka', ['ب', 'ر', 'ك'], 'Mencari berkah', 'تَبَرُّكًا'),
+    buildTafaalaVerb('r1-tajannaba', ['ج', 'ن', 'ب'], 'Mengelakkan', 'تَجَنُّبًا'),
+    buildTafaalaVerb('r1-taallama', ['ع', 'ل', 'م'], 'Mencari ilmu', 'تَعَلُّمًا'),
+    buildTafaalaVerb('r1-taaddada', ['ع', 'د', 'د'], 'Berbilang', 'تَعَدُّدًا'),
   ],
 };
 
@@ -197,6 +386,8 @@ const MAZID2_BAB2: ShorofBab = {
   wazanAr: 'تَفَاعَلَ - يَتَفَاعَلُ',
   wazanLatin: "Tafaa'ala - Yatafaa'alu",
   kaidahAinFiil: "Tambahan Ta' di awal dan Alif setelah Fa' Fi'il (bermakna saling/resiprokal)",
+  questionsPerSection: 10,
+  sectionedExam: true,
   wazanIstilahi: {
     madhi: 'تَفَاعَلَ',
     mudhari: 'يَتَفَاعَلُ',
@@ -211,40 +402,15 @@ const MAZID2_BAB2: ShorofBab = {
     mudhari_majhul: 'يُتَفَاعَلُ',
   },
   mauzunList: [
-    {
-      id: 'taqabala',
-      babId: 'mazid2-bab-2',
-      rootLetters: ['ق', 'ب', 'ل'],
-      artiDasar: 'Saling Bertemu',
-      istilahi: {
-        madhi: 'تَقَابَلَ',
-        mudhari: 'يَتَقَابَلُ',
-        mashdar: 'تَقَابُلًا',
-        isim_fail: 'مُتَقَابِلٌ',
-        isim_maful: 'مُتَقَابَلٌ',
-        fiil_amr: 'تَقَابَلْ',
-        fiil_nahyi: 'لَا تَتَقَابَلْ',
-        isim_zaman_makan: 'مُتَقَابَلٌ',
-        isim_alat: '—',
-        madhi_majhul: 'تُقُوبِلَ',
-        mudhari_majhul: 'يُتَقَابَلُ',
-      },
-      lughawiMadhi: [
-        'تَقَابَلَ', 'تَقَابَلَا', 'تَقَابَلُوا',
-        'تَقَابَلَتْ', 'تَقَابَلَتَا', 'تَقَابَلْنَ',
-        'تَقَابَلْتَ', 'تَقَابَلْتُمَا', 'تَقَابَلْتُمْ',
-        'تَقَابَلْتِ', 'تَقَابَلْتُمَا', 'تَقَابَلْتُنَّ',
-        'تَقَابَلْتُ', 'تَقَابَلْنَا',
-      ],
-      lughawiMudhari: [
-        'يَتَقَابَلُ', 'يَتَقَابَلَانِ', 'يَتَقَابَلُونَ',
-        'تَتَقَابَلُ', 'تَتَقَابَلَانِ', 'يَتَقَابَلْنَ',
-        'تَتَقَابَلُ', 'تَتَقَابَلَانِ', 'تَتَقَابَلُونَ',
-        'تَتَقَابَلِينَ', 'تَتَقَابَلَانِ', 'تَتَقَابَلْنَ',
-        'أَتَقَابَلُ', 'نَتَقَابَلُ',
-      ],
-      lughawiAmr: ['تَقَابَلْ', 'تَقَابَلَا', 'تَقَابَلُوا', 'تَقَابَلِي', 'تَقَابَلَا', 'تَقَابَلْنَ'],
-    },
+    buildTafaaalaVerb('r1-taaawana', ['ع', 'و', 'ن'], 'Tolong-menolong', 'تَعَاوُنًا'),
+    buildTafaaalaVerb('r1-tawaatara', ['و', 'ت', 'ر'], 'Berturut-turut', 'تَوَاتُرًا'),
+    buildTafaaalaVerb('r1-talaaaba', ['ل', 'ع', 'ب'], 'Bermain-main', 'تَلَاعُبًا'),
+    buildTafaaalaVerb('r1-tanaafasa', ['ن', 'ف', 'س'], 'Berlomba', 'تَنَافُسًا'),
+    buildTafaaalaVerb('r1-tadaarasa', ['د', 'ر', 'س'], 'Saling mempelajari', 'تَدَارُسًا'),
+    buildTafaaalaVerb('r1-tanaazaa', ['ن', 'ز', 'ع'], 'Berselisih', 'تَنَازُعًا'),
+    buildTafaaalaVerb('r1-tasaaala', ['س', 'أ', 'ل'], 'Saling bertanya', 'تَسَاؤُلًا'),
+    buildTafaaalaVerb('r1-taaarafa', ['ع', 'ر', 'ف'], 'Saling mengenal', 'تَعَارُفًا'),
+    buildTafaaalaVerb('r1-tawaadhaa', ['و', 'ض', 'ع'], 'Merendahkan diri', 'تَوَاضُعًا'),
   ],
 };
 
@@ -256,6 +422,8 @@ const MAZID2_BAB3: ShorofBab = {
   wazanAr: 'اِفْتَعَلَ - يَفْتَعِلُ',
   wazanLatin: "Ifta'ala - Yafta'ilu",
   kaidahAinFiil: "Tambahan Hamzah Washal di awal dan Ta' setelah Fa' Fi'il",
+  questionsPerSection: 10,
+  sectionedExam: true,
   wazanIstilahi: {
     madhi: 'اِفْتَعَلَ',
     mudhari: 'يَفْتَعِلُ',
@@ -270,40 +438,17 @@ const MAZID2_BAB3: ShorofBab = {
     mudhari_majhul: 'يُفْتَعَلُ',
   },
   mauzunList: [
-    {
-      id: 'ijtamaa',
-      babId: 'mazid2-bab-3',
-      rootLetters: ['ج', 'م', 'ع'],
-      artiDasar: 'Berkumpul',
-      istilahi: {
-        madhi: 'اِجْتَمَعَ',
-        mudhari: 'يَجْتَمِعُ',
-        mashdar: 'اِجْتِمَاعًا',
-        isim_fail: 'مُجْتَمِعٌ',
-        isim_maful: 'مُجْتَمَعٌ',
-        fiil_amr: 'اِجْتَمِعْ',
-        fiil_nahyi: 'لَا تَجْتَمِعْ',
-        isim_zaman_makan: 'مُجْتَمَعٌ',
-        isim_alat: '—',
-        madhi_majhul: 'اُجْتُمِعَ',
-        mudhari_majhul: 'يُجْتَمَعُ',
-      },
-      lughawiMadhi: [
-        'اِجْتَمَعَ', 'اِجْتَمَعَا', 'اِجْتَمَعُوا',
-        'اِجْتَمَعَتْ', 'اِجْتَمَعَتَا', 'اِجْتَمَعْنَ',
-        'اِجْتَمَعْتَ', 'اِجْتَمَعْتُمَا', 'اِجْتَمَعْتُمْ',
-        'اِجْتَمَعْتِ', 'اِجْتَمَعْتُمَا', 'اِجْتَمَعْتُنَّ',
-        'اِجْتَمَعْتُ', 'اِجْتَمَعْنَا',
-      ],
-      lughawiMudhari: [
-        'يَجْتَمِعُ', 'يَجْتَمِعَانِ', 'يَجْتَمِعُونَ',
-        'تَجْتَمِعُ', 'تَجْتَمِعَانِ', 'يَجْتَمِعْنَ',
-        'تَجْتَمِعُ', 'تَجْتَمِعَانِ', 'تَجْتَمِعُونَ',
-        'تَجْتَمِعِينَ', 'تَجْتَمِعَانِ', 'تَجْتَمِعْنَ',
-        'أَجْتَمِعُ', 'نَجْتَمِعُ',
-      ],
-      lughawiAmr: ['اِجْتَمِعْ', 'اِجْتَمِعَا', 'اِجْتَمِعُوا', 'اِجْتَمِعِي', 'اِجْتَمِعَا', 'اِجْتَمِعْنَ'],
-    },
+    buildIftaalaVerb('r1-ikhtabara', ['خ', 'ب', 'ر'], 'Menguji', 'اِخْتِبَارًا'),
+    buildIftaalaVerb('r1-ikhtalafa', ['خ', 'ل', 'ف'], 'Berselisih', 'اِخْتِلَافًا'),
+    buildIftaalaVerb('r1-iqtaraba', ['ق', 'ر', 'ب'], 'Mendekat', 'اِقْتِرَابًا'),
+    buildIftaalaVerb('r1-intasyara', ['ن', 'ش', 'ر'], 'Tersebar', 'اِنْتِشَارًا'),
+    buildIftaalaVerb('r1-iatashama', ['ع', 'ص', 'م'], 'Berpegang teguh', 'اِعْتِصَامًا'),
+    buildIftaalaVerb('r1-ijtamaa', ['ج', 'م', 'ع'], 'Berkumpul', 'اِجْتِمَاعًا'),
+    buildIftaalaVerb('r1-ihtalama', ['ح', 'ل', 'م'], 'Mimpi basah', 'اِحْتِلَامًا'),
+    buildIftaalaVerb('r1-ittafaqa', ['و', 'ف', 'ق'], 'Bersepakat', 'اِتِّفَاقًا'),
+    buildIftaalaVerb('r1-intatsara', ['ن', 'ث', 'ر'], 'Berserakan', 'اِنْتِثَارًا'),
+    buildIftaalaVerb('r1-imtahana', ['م', 'ح', 'ن'], 'Menguji', 'اِمْتِحَانًا'),
+    buildIftaalaVerb('r1-ittabaa', ['ت', 'ب', 'ع'], 'Mengikuti', 'اِتِّبَاعًا'),
   ],
 };
 
@@ -315,6 +460,8 @@ const MAZID2_BAB4: ShorofBab = {
   wazanAr: 'اِنْفَعَلَ - يَنْفَعِلُ',
   wazanLatin: "Infa'ala - Yanfa'ilu",
   kaidahAinFiil: "Tambahan Hamzah Washal dan Nun di awal (bermakna muthawa'ah / menjadi)",
+  questionsPerSection: 10,
+  sectionedExam: true,
   wazanIstilahi: {
     madhi: 'اِنْفَعَلَ',
     mudhari: 'يَنْفَعِلُ',
@@ -329,40 +476,16 @@ const MAZID2_BAB4: ShorofBab = {
     mudhari_majhul: 'يُنْفَعَلُ',
   },
   mauzunList: [
-    {
-      id: 'inkasara',
-      babId: 'mazid2-bab-4',
-      rootLetters: ['ك', 'س', 'ر'],
-      artiDasar: 'Pecah / Terpecah',
-      istilahi: {
-        madhi: 'اِنْكَسَرَ',
-        mudhari: 'يَنْكَسِرُ',
-        mashdar: 'اِنْكِسَارًا',
-        isim_fail: 'مُنْكَسِرٌ',
-        isim_maful: 'مُنْكَسَرٌ',
-        fiil_amr: 'اِنْكَسِرْ',
-        fiil_nahyi: 'لَا تَنْكَسِرْ',
-        isim_zaman_makan: 'مُنْكَسَرٌ',
-        isim_alat: '—',
-        madhi_majhul: 'اُنْكُسِرَ',
-        mudhari_majhul: 'يُنْكَسَرُ',
-      },
-      lughawiMadhi: [
-        'اِنْكَسَرَ', 'اِنْكَسَرَا', 'اِنْكَسَرُوا',
-        'اِنْكَسَرَتْ', 'اِنْكَسَرَتَا', 'اِنْكَسَرْنَ',
-        'اِنْكَسَرْتَ', 'اِنْكَسَرْتُمَا', 'اِنْكَسَرْتُمْ',
-        'اِنْكَسَرْتِ', 'اِنْكَسَرْتُمَا', 'اِنْكَسَرْتُنَّ',
-        'اِنْكَسَرْتُ', 'اِنْكَسَرْنَا',
-      ],
-      lughawiMudhari: [
-        'يَنْكَسِرُ', 'يَنْكَسِرَانِ', 'يَنْكَسِرُونَ',
-        'تَنْكَسِرُ', 'تَنْكَسِرَانِ', 'يَنْكَسِرْنَ',
-        'تَنْكَسِرُ', 'تَنْكَسِرَانِ', 'تَنْكَسِرُونَ',
-        'تَنْكَسِرِينَ', 'تَنْكَسِرَانِ', 'تَنْكَسِرْنَ',
-        'أَنْكَسِرُ', 'نَنْكَسِرُ',
-      ],
-      lughawiAmr: ['اِنْكَسِرْ', 'اِنْكَسِرَا', 'اِنْكَسِرُوا', 'اِنْكَسِرِي', 'اِنْكَسِرَا', 'اِنْكَسِرْنَ'],
-    },
+    buildInfaalaVerb('r1-inqasama', ['ق', 'س', 'م'], 'Terbagi', 'اِنْقِسَامًا'),
+    buildInfaalaVerb('r1-infashala', ['ف', 'ص', 'ل'], 'Terpisah', 'اِنْفِصَالًا'),
+    buildInfaalaVerb('r1-infathara', ['ف', 'ط', 'ر'], 'Terbelah', 'اِنْفِطَارًا'),
+    buildInfaalaVerb('r1-inkasyafa', ['ك', 'ش', 'ف'], 'Tersingkap', 'اِنْكِشَافًا'),
+    buildInfaalaVerb('r1-inkadara', ['ك', 'د', 'ر'], 'Berjatuhan', 'اِنْكِدَارًا'),
+    buildInfaalaVerb('r1-infarada', ['ف', 'ر', 'د'], 'Bersendirian', 'اِنْفِرَادًا'),
+    buildInfaalaVerb('r1-insharafa', ['ص', 'ر', 'ف'], 'Berpaling', 'اِنْصِرَافًا'),
+    buildInfaalaVerb('r1-inqalaba', ['ق', 'ل', 'ب'], 'Berbalik, kembali', 'اِنْقِلَابًا'),
+    buildInfaalaVerb('r1-inqathaa', ['ق', 'ط', 'ع'], 'Terputus', 'اِنْقِطَاعًا'),
+    buildInfaalaVerb('r1-inthalaqa', ['ط', 'ل', 'ق'], 'Pergi', 'اِنْطِلَاقًا'),
   ],
 };
 
@@ -472,13 +595,28 @@ const BAB6_OPTS = {
 };
 
 const R1_BAB1: ShorofBab = {
-  ...SHOROF_BABS_REGULER_2[0],
   id: 'r1-bab-1',
   kode: 'Bab 1',
   namaBab: 'Tsulatsi Mujarrod Bab 1 (Fathu-Dhammin)',
   kategori: 'Tsulatsi Mujarrod',
+  wazanAr: 'فَعَلَ - يَفْعُلُ',
+  wazanLatin: "Fa'ala - Yaf'ulu",
+  kaidahAinFiil: "'Ain Fi'il berharakat Fathah pada Madhi dan Dhammah pada Mudhari'",
   questionsPerSection: 10,
   sectionedExam: true,
+  wazanIstilahi: {
+    madhi: 'فَعَلَ',
+    mudhari: 'يَفْعُلُ',
+    mashdar: 'فَعْلًا',
+    isim_fail: 'فَاعِلٌ',
+    isim_maful: 'مَفْعُولٌ',
+    fiil_amr: 'اُفْعُلْ',
+    fiil_nahyi: 'لَا تَفْعُلْ',
+    isim_zaman_makan: 'مَفْعَلٌ',
+    isim_alat: 'مِفْعَلٌ',
+    madhi_majhul: 'فُعِلَ',
+    mudhari_majhul: 'يُفْعَلُ',
+  },
   mauzunList: [
     buildMujarrodSoundVerb('kafara', 'r1-bab-1', ['ك', 'ف', 'ر'], 'Mengingkari', 'كُفْرًا', BAB1_OPTS),
     buildMujarrodSoundVerb('qatala', 'r1-bab-1', ['ق', 'ت', 'ل'], 'Membunuh', 'قَتْلًا', BAB1_OPTS),
@@ -496,13 +634,28 @@ const R1_BAB1: ShorofBab = {
 };
 
 const R1_BAB2: ShorofBab = {
-  ...SHOROF_BABS_REGULER_2[1],
   id: 'r1-bab-2',
   kode: 'Bab 2',
   namaBab: 'Tsulatsi Mujarrod Bab 2 (Fathu-Kasrin)',
   kategori: 'Tsulatsi Mujarrod',
+  wazanAr: 'فَعَلَ - يَفْعِلُ',
+  wazanLatin: "Fa'ala - Yaf'ilu",
+  kaidahAinFiil: "'Ain Fi'il berharakat Fathah pada Madhi dan Kasrah pada Mudhari'",
   questionsPerSection: 10,
   sectionedExam: true,
+  wazanIstilahi: {
+    madhi: 'فَعَلَ',
+    mudhari: 'يَفْعِلُ',
+    mashdar: 'فَعْلًا',
+    isim_fail: 'فَاعِلٌ',
+    isim_maful: 'مَفْعُولٌ',
+    fiil_amr: 'اِفْعِلْ',
+    fiil_nahyi: 'لَا تَفْعِلْ',
+    isim_zaman_makan: 'مَفْعِلٌ',
+    isim_alat: 'مِفْعَلٌ',
+    madhi_majhul: 'فُعِلَ',
+    mudhari_majhul: 'يُفْعَلُ',
+  },
   mauzunList: [
     buildMujarrodSoundVerb('ghalaba', 'r1-bab-2', ['غ', 'ل', 'ب'], 'Mengalahkan', 'غَلَبًا', BAB2_OPTS),
     buildMujarrodSoundVerb('ghafara', 'r1-bab-2', ['غ', 'ف', 'ر'], 'Mengampuni', 'غَفْرًا', BAB2_OPTS),
@@ -520,13 +673,28 @@ const R1_BAB2: ShorofBab = {
 };
 
 const R1_BAB3: ShorofBab = {
-  ...SHOROF_BABS_REGULER_2[2],
   id: 'r1-bab-3',
   kode: 'Bab 3',
   namaBab: 'Tsulatsi Mujarrod Bab 3 (Fathu-Fathin)',
   kategori: 'Tsulatsi Mujarrod',
+  wazanAr: 'فَعَلَ - يَفْعَلُ',
+  wazanLatin: "Fa'ala - Yaf'alu",
+  kaidahAinFiil: "'Ain Fi'il berharakat Fathah pada Madhi dan Fathah pada Mudhari' (Huruf Halqi)",
   questionsPerSection: 10,
   sectionedExam: true,
+  wazanIstilahi: {
+    madhi: 'فَعَلَ',
+    mudhari: 'يَفْعَلُ',
+    mashdar: 'فَعْلًا',
+    isim_fail: 'فَاعِلٌ',
+    isim_maful: 'مَفْعُولٌ',
+    fiil_amr: 'اِفْعَلْ',
+    fiil_nahyi: 'لَا تَفْعَلْ',
+    isim_zaman_makan: 'مَفْعَلٌ',
+    isim_alat: 'مِفْعَلَةٌ',
+    madhi_majhul: 'فُعِلَ',
+    mudhari_majhul: 'يُفْعَلُ',
+  },
   mauzunList: [
     buildMujarrodSoundVerb('r1-fataha', 'r1-bab-3', ['ف', 'ت', 'ح'], 'Membuka', 'فَتْحًا', BAB3_OPTS),
     buildMujarrodSoundVerb('baatsa', 'r1-bab-3', ['ب', 'ع', 'ث'], 'Mengirim', 'بَعْثًا', BAB3_OPTS),
@@ -577,13 +745,28 @@ const R1_BAB3: ShorofBab = {
 };
 
 const R1_BAB4: ShorofBab = {
-  ...SHOROF_BABS_REGULER_2[5],
   id: 'r1-bab-4',
   kode: 'Bab 4',
   namaBab: 'Tsulatsi Mujarrod Bab 4 (Kasru-Kasrin)',
   kategori: 'Tsulatsi Mujarrod',
+  wazanAr: 'فَعِلَ - يَفْعِلُ',
+  wazanLatin: "Fa'ila - Yaf'ilu",
+  kaidahAinFiil: "'Ain Fi'il berharakat Kasrah pada Madhi dan Kasrah pada Mudhari'",
   questionsPerSection: 10,
   sectionedExam: true,
+  wazanIstilahi: {
+    madhi: 'فَعِلَ',
+    mudhari: 'يَفْعِلُ',
+    mashdar: 'فُعْلَانًا',
+    isim_fail: 'فَاعِلٌ',
+    isim_maful: 'مَفْعُولٌ',
+    fiil_amr: 'اِفْعِلْ',
+    fiil_nahyi: 'لَا تَفْعِلْ',
+    isim_zaman_makan: 'مَفْعِلٌ',
+    isim_alat: 'مِفْعَلٌ',
+    madhi_majhul: 'فُعِلَ',
+    mudhari_majhul: 'يُفْعَلُ',
+  },
   mauzunList: [
     buildMujarrodSoundVerb('naima', 'r1-bab-4', ['ن', 'ع', 'م'], 'Lembut', 'نَعِيمًا', BAB4_OPTS),
     buildMujarrodSoundVerb('tafiha', 'r1-bab-4', ['ت', 'ف', 'ه'], 'Rendah', 'تَفَهًا', BAB4_OPTS),
@@ -592,13 +775,28 @@ const R1_BAB4: ShorofBab = {
 };
 
 const R1_BAB5: ShorofBab = {
-  ...SHOROF_BABS_REGULER_2[3],
   id: 'r1-bab-5',
   kode: 'Bab 5',
   namaBab: 'Tsulatsi Mujarrod Bab 5 (Kasru-Fathin)',
   kategori: 'Tsulatsi Mujarrod',
+  wazanAr: 'فَعِلَ - يَفْعَلُ',
+  wazanLatin: "Fa'ila - Yaf'alu",
+  kaidahAinFiil: "'Ain Fi'il berharakat Kasrah pada Madhi dan Fathah pada Mudhari'",
   questionsPerSection: 10,
   sectionedExam: true,
+  wazanIstilahi: {
+    madhi: 'فَعِلَ',
+    mudhari: 'يَفْعَلُ',
+    mashdar: 'فِعْلًا',
+    isim_fail: 'فَاعِلٌ',
+    isim_maful: 'مَفْعُولٌ',
+    fiil_amr: 'اِفْعَلْ',
+    fiil_nahyi: 'لَا تَفْعَلْ',
+    isim_zaman_makan: 'مَفْعَلٌ',
+    isim_alat: 'مِفْعَلٌ',
+    madhi_majhul: 'فُعِلَ',
+    mudhari_majhul: 'يُفْعَلُ',
+  },
   mauzunList: [
     buildMujarrodSoundVerb('ghadhiba', 'r1-bab-5', ['غ', 'ض', 'ب'], 'Marah', 'غَضَبًا', BAB5_OPTS),
     buildMujarrodSoundVerb('lahiqa', 'r1-bab-5', ['ل', 'ح', 'ق'], 'Bertemu', 'لَحَاقًا', BAB5_OPTS),
@@ -616,13 +814,28 @@ const R1_BAB5: ShorofBab = {
 };
 
 const R1_BAB6: ShorofBab = {
-  ...SHOROF_BABS_REGULER_2[4],
   id: 'r1-bab-6',
   kode: 'Bab 6',
   namaBab: 'Tsulatsi Mujarrod Bab 6 (Dhammu-Dhammin)',
   kategori: 'Tsulatsi Mujarrod',
+  wazanAr: 'فَعُلَ - يَفْعُلُ',
+  wazanLatin: "Fa'ula - Yaf'ulu",
+  kaidahAinFiil: "'Ain Fi'il berharakat Dhammah pada Madhi dan Dhammah pada Mudhari' (Fi'il Lazim/Sifat)",
   questionsPerSection: 10,
   sectionedExam: true,
+  wazanIstilahi: {
+    madhi: 'فَعُلَ',
+    mudhari: 'يَفْعُلُ',
+    mashdar: 'فُعُولَةً / فَعَالَةً',
+    isim_fail: 'فَعِيلٌ / حَسَنٌ',
+    isim_maful: '— (Lazim)',
+    fiil_amr: 'اُفْعُلْ',
+    fiil_nahyi: 'لَا تَفْعُلْ',
+    isim_zaman_makan: 'مَفْعَلٌ',
+    isim_alat: '— (Lazim)',
+    madhi_majhul: '—',
+    mudhari_majhul: '—',
+  },
   mauzunList: [
     buildMujarrodSoundVerb('najusa', 'r1-bab-6', ['ن', 'ج', 'س'], 'Najis', 'نَجَاسَةً', BAB6_OPTS),
     buildMujarrodSoundVerb('katsura', 'r1-bab-6', ['ك', 'ث', 'ر'], 'Banyak', 'كَثْرَةً', BAB6_OPTS),
@@ -876,6 +1089,117 @@ const MAZID1_BAB3: ShorofBab = {
   ],
 };
 
+function buildIstafalaVerb(
+  id: string,
+  rootLetters: [string, string, string],
+  artiDasar: string,
+  mashdar: string
+): MauzunVerb {
+  const [f, a, l] = rootLetters;
+  if (l === 'أ') {
+    const stemBase = `سْتَ${f}ْ${a}`;
+    return {
+      id,
+      babId: 'mazid3-bab-1',
+      rootLetters,
+      artiDasar,
+      istilahi: {
+        madhi: `اِ${stemBase}َأَ`,
+        mudhari: `يَ${stemBase}ِئُ`,
+        mashdar,
+        isim_fail: `مُ${stemBase}ِئٌ`,
+        isim_maful: `مُ${stemBase}َأٌ`,
+        fiil_amr: `اِ${stemBase}ِئْ`,
+        fiil_nahyi: `لَا تَ${stemBase}ِئْ`,
+        isim_zaman_makan: `مُ${stemBase}َأٌ`,
+        isim_alat: '—',
+        madhi_majhul: `اُسْتُ${f}ْ${a}ِئَ`,
+        mudhari_majhul: `يُ${stemBase}َأُ`,
+      },
+      lughawiMadhi: [
+        `اِ${stemBase}َأَ`, `اِ${stemBase}َأَا`, `اِ${stemBase}َؤُوا`,
+        `اِ${stemBase}َأَتْ`, `اِ${stemBase}َأَتَا`, `اِ${stemBase}َأْنَ`,
+        `اِ${stemBase}َأْتَ`, `اِ${stemBase}َأْتُمَا`, `اِ${stemBase}َأْتُمْ`,
+        `اِ${stemBase}َأْتِ`, `اِ${stemBase}َأْتُمَا`, `اِ${stemBase}َأْتُنَّ`,
+        `اِ${stemBase}َأْتُ`, `اِ${stemBase}َأْنَا`,
+      ],
+      lughawiMudhari: [
+        `يَ${stemBase}ِئُ`, `يَ${stemBase}ِئَانِ`, `يَ${stemBase}ِئُونَ`,
+        `تَ${stemBase}ِئُ`, `تَ${stemBase}ِئَانِ`, `يَ${stemBase}ِئْنَ`,
+        `تَ${stemBase}ِئُ`, `تَ${stemBase}ِئَانِ`, `تَ${stemBase}ِئُونَ`,
+        `تَ${stemBase}ِئِينَ`, `تَ${stemBase}ِئَانِ`, `تَ${stemBase}ِئْنَ`,
+        `أَ${stemBase}ِئُ`, `نَ${stemBase}ِئُ`,
+      ],
+      lughawiAmr: [
+        `اِ${stemBase}ِئْ`, `اِ${stemBase}ِئَا`, `اِ${stemBase}ِئُوا`,
+        `اِ${stemBase}ِئِي`, `اِ${stemBase}ِئَا`, `اِ${stemBase}ِئْنَ`,
+      ],
+    };
+  }
+
+  const madhiStem = `اِسْتَ${f}ْ${a}َ${l}`;
+  const mudhariStem = `سْتَ${f}ْ${a}ِ${l}`;
+  const amrStem = `اِسْتَ${f}ْ${a}ِ${l}`;
+  const majhulFa = f === 'أ' ? 'ؤ' : f;
+
+  return {
+    id,
+    babId: 'mazid3-bab-1',
+    rootLetters,
+    artiDasar,
+    istilahi: {
+      madhi: `${madhiStem}َ`,
+      mudhari: `يَ${mudhariStem}ُ`,
+      mashdar,
+      isim_fail: `مُ${mudhariStem}ٌ`,
+      isim_maful: `مُسْتَ${f}ْ${a}َ${l}ٌ`,
+      fiil_amr: `${amrStem}ْ`,
+      fiil_nahyi: `لَا تَ${mudhariStem}ْ`,
+      isim_zaman_makan: `مُسْتَ${f}ْ${a}َ${l}ٌ`,
+      isim_alat: '—',
+      madhi_majhul: `اُسْتُ${majhulFa}ْ${a}ِ${l}َ`,
+      mudhari_majhul: `يُسْتَ${f}ْ${a}َ${l}ُ`,
+    },
+    ...buildFathahMudhariLughawi(madhiStem, mudhariStem, amrStem, l),
+  };
+}
+
+const MAZID3_BAB1: ShorofBab = {
+  id: 'mazid3-bab-1',
+  kode: 'Mazid 3 · Bab 1',
+  namaBab: "Tsulatsi Mazid +3 Huruf Bab 1 (Istaf'ala - Yastaf'ilu)",
+  kategori: 'Tsulatsi Mazid (+3 Huruf)',
+  wazanAr: 'اِسْتَفْعَلَ - يَسْتَفْعِلُ',
+  wazanLatin: "Istaf'ala - Yastaf'ilu",
+  kaidahAinFiil: 'Tambahan 3 huruf (Hamzah Washal, Sin, dan Ta) di awal kata (bermakna Thalab / Meminta)',
+  questionsPerSection: 10,
+  sectionedExam: true,
+  wazanIstilahi: {
+    madhi: 'اِسْتَفْعَلَ',
+    mudhari: 'يَسْتَفْعِلُ',
+    mashdar: 'اِسْتِفْعَالًا',
+    isim_fail: 'مُسْتَفْعِلٌ',
+    isim_maful: 'مُسْتَفْعَلٌ',
+    fiil_amr: 'اِسْتَفْعِلْ',
+    fiil_nahyi: 'لَا تَسْتَفْعِلْ',
+    isim_zaman_makan: 'مُسْتَفْعَلٌ',
+    isim_alat: '—',
+    madhi_majhul: 'اُسْتُفْعِلَ',
+    mudhari_majhul: 'يُسْتَفْعَلُ',
+  },
+  mauzunList: [
+    buildIstafalaVerb('r1-istaftaha', ['ف', 'ت', 'ح'], 'Minta dibukakan', 'اِسْتِفْتَاحًا'),
+    buildIstafalaVerb('r1-istahzaa', ['ه', 'ز', 'أ'], 'Berolok-olok', 'اِسْتِهْزَاءً'),
+    buildIstafalaVerb('r1-istaakhara', ['أ', 'خ', 'ر'], 'Minta diakhirkan', 'اِسْتِئْخَارًا'),
+    buildIstafalaVerb('r1-istaslama', ['س', 'ل', 'م'], 'Berserah diri', 'اِسْتِسْلَامًا'),
+    buildIstafalaVerb('r1-istaamala', ['ع', 'م', 'ل'], 'Memakai', 'اِسْتِعْمَالًا'),
+    buildIstafalaVerb('r1-istakbara', ['ك', 'ب', 'ر'], 'Sombong', 'اِسْتِكْبَارًا'),
+    buildIstafalaVerb('r1-istaqdama', ['ق', 'د', 'م'], 'Minta didatangkan', 'اِسْتِقْدَامًا'),
+    buildIstafalaVerb('r1-istaghfara', ['غ', 'ف', 'ر'], 'Minta ampun', 'اِسْتِغْفَارًا'),
+    buildIstafalaVerb('r1-istafhama', ['ف', 'ه', 'م'], 'Menanyakan', 'اِسْتِفْهَامًا'),
+  ],
+};
+
 export const SHOROF_BABS_REGULER_1: ShorofBab[] = [
   // 6 Bab Tsulatsi Mujarrod
   R1_BAB1, // Bab 1: فَعَلَ - يَفْعُلُ (12 Mufradat, 60 soal)
@@ -894,10 +1218,5 @@ export const SHOROF_BABS_REGULER_1: ShorofBab[] = [
   MAZID2_BAB3,
   MAZID2_BAB4,
   // 1 Bab Tsulatsi Mazid (+3 Huruf)
-  cloneReguler2Bab('mazid-3', {
-    id: 'mazid3-bab-1',
-    kode: 'Mazid 3 · Bab 1',
-    namaBab: "Tsulatsi Mazid +3 Huruf Bab 1 (Istaf'ala - Yastaf'ilu)",
-    kategori: 'Tsulatsi Mazid (+3 Huruf)',
-  }),
+  MAZID3_BAB1, // Mazid 3 Bab 1: اِسْتَفْعَلَ - يَسْتَفْعِلُ (9 Mufradat, 10 soal/Bagian)
 ];

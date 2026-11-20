@@ -136,7 +136,7 @@ export const ExamAccessControlView: React.FC<ExamAccessControlViewProps> = ({
 
           <button
             type="button"
-            disabled={saving}
+            disabled={saving || classBabs.length === 0}
             onClick={() => handleToggleAllBabsInClass(true)}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 rounded-lg transition-colors"
           >
@@ -146,7 +146,7 @@ export const ExamAccessControlView: React.FC<ExamAccessControlViewProps> = ({
 
           <button
             type="button"
-            disabled={saving}
+            disabled={saving || classBabs.length === 0}
             onClick={() => handleToggleAllBabsInClass(false)}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 disabled:opacity-50 rounded-lg transition-colors"
           >
@@ -168,7 +168,17 @@ export const ExamAccessControlView: React.FC<ExamAccessControlViewProps> = ({
 
       {/* Bab Groups */}
       <div className="space-y-8">
-        {groupedBabs.map((group) => (
+        {groupedBabs.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-xl p-8 text-center space-y-1.5">
+            <div className="text-sm font-bold text-slate-800">
+              Belum Ada Soal Ujian untuk {selectedClass}
+            </div>
+            <p className="text-xs text-slate-500">
+              Soal ujian saat ini hanya tersedia untuk kelas Reguler 1.
+            </p>
+          </div>
+        ) : (
+        groupedBabs.map((group) => (
           <div key={group.kategori} className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
               <h3 className="text-sm font-bold text-slate-900">{group.kategori}</h3>
@@ -377,7 +387,8 @@ export const ExamAccessControlView: React.FC<ExamAccessControlViewProps> = ({
               })}
             </div>
           </div>
-        ))}
+        ))
+        )}
       </div>
     </div>
   );

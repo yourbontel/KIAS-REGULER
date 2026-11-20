@@ -11,7 +11,7 @@ export const ALL_SHOROF_BABS: ShorofBab[] = Array.from(
   new Map([...SHOROF_BABS_REGULER_1, ...SHOROF_BABS_REGULER_2].map((b) => [b.id, b])).values()
 );
 
-export const SHOROF_BABS: ShorofBab[] = SHOROF_BABS_REGULER_2;
+export const SHOROF_BABS: ShorofBab[] = SHOROF_BABS_REGULER_1;
 
 export function getBabsForClass(kelas: StudentClass): ShorofBab[] {
   return kelas === 'Reguler 1' ? SHOROF_BABS_REGULER_1 : SHOROF_BABS_REGULER_2;

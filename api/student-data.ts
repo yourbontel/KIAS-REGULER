@@ -8,6 +8,10 @@ const pool = new Pool({
   max: 1,
 });
 
+pool.on('error', (err) => {
+  console.error('PostgreSQL idle client error (student-data):', err.message);
+});
+
 const VALID_MODES = new Set([
   'ujian_bab',
   'istilahi',
@@ -76,6 +80,14 @@ function ensureTables(): Promise<void> {
         CREATE TABLE IF NOT EXISTS exam_access_config (
           id TEXT PRIMARY KEY,
           config JSONB NOT NULL DEFAULT '{"babs":{},"sections":{}}'::jsonb,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS student_manual_scores (
+          student_id TEXT PRIMARY KEY,
+          uts_score DOUBLE PRECISION,
+          uas_score DOUBLE PRECISION,
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
       `);
@@ -176,6 +188,35 @@ function isExamOpenServer(
   return true;
 }
 
+function sanitizeOptionalManualScore(raw: unknown): number | null | 'invalid' {
+  if (raw === null || raw === undefined || raw === '') return null;
+  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw < 0 || raw > 100) {
+    return 'invalid';
+  }
+  return Math.round(raw * 100) / 100;
+}
+
+function sanitizeManualScoreEntries(raw: unknown) {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > 500) return null;
+  const result: { studentId: string; utsScore: number | null; uasScore: number | null }[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+    const obj = item as Record<string, unknown>;
+    if (typeof obj.studentId !== 'string' || !obj.studentId.trim() || obj.studentId.length > 128) {
+      return null;
+    }
+    const utsScore = sanitizeOptionalManualScore(obj.utsScore);
+    const uasScore = sanitizeOptionalManualScore(obj.uasScore);
+    if (utsScore === 'invalid' || uasScore === 'invalid') return null;
+    result.push({
+      studentId: obj.studentId.trim(),
+      utsScore,
+      uasScore,
+    });
+  }
+  return result;
+}
+
 function sanitizeReviewItems(raw: unknown) {
   if (!Array.isArray(raw) || raw.length === 0 || raw.length > 200) return null;
   const sanitized = [];
@@ -256,31 +297,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      const [attemptResult, setoranResult, studentResult, accessResult] = await Promise.all([
-        pool.query(`
-          SELECT
-            id, student_id, timestamp, bab_id, bab_label, section_number,
-            mode, score, correct_count, total_questions,
-            (review_items IS NOT NULL) AS has_review
-          FROM quiz_attempts
-          ORDER BY created_at DESC, id DESC
-        `),
-        pool.query(`
-          SELECT student_id, completed_babs, last_updated, notes
-          FROM student_setoran
-        `),
-        pool.query(`
-          SELECT id, name, kelas, gender, kota, catatan
-          FROM student_records
-          ORDER BY updated_at ASC, id ASC
-        `),
-        pool.query(`
-          SELECT config
-          FROM exam_access_config
-          WHERE id = 'global'
-          LIMIT 1
-        `),
-      ]);
+      const [attemptResult, setoranResult, studentResult, accessResult, manualScoresResult] =
+        await Promise.all([
+          pool.query(`
+            SELECT
+              id, student_id, timestamp, bab_id, bab_label, section_number,
+              mode, score, correct_count, total_questions,
+              (review_items IS NOT NULL) AS has_review
+            FROM quiz_attempts
+            ORDER BY created_at DESC, id DESC
+          `),
+          pool.query(`
+            SELECT student_id, completed_babs, last_updated, notes
+            FROM student_setoran
+          `),
+          pool.query(`
+            SELECT id, name, kelas, gender, kota, catatan
+            FROM student_records
+            ORDER BY updated_at ASC, id ASC
+          `),
+          pool.query(`
+            SELECT config
+            FROM exam_access_config
+            WHERE id = 'global'
+            LIMIT 1
+          `),
+          pool.query(`
+            SELECT student_id, uts_score, uas_score, updated_at
+            FROM student_manual_scores
+          `),
+        ]);
 
       const attempts = attemptResult.rows.map((row) => ({
         id: row.id,
@@ -325,7 +371,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const examAccess = sanitizeExamAccess(accessResult.rows[0]?.config);
 
-      return res.status(200).json({ attempts, setoranMap, studentRecords, examAccess });
+      const manualScoresMap: Record<
+        string,
+        { studentId: string; utsScore: number | null; uasScore: number | null; updatedAt?: string }
+      > = {};
+      for (const row of manualScoresResult.rows) {
+        const utsScore =
+          row.uts_score !== null && row.uts_score !== undefined ? Number(row.uts_score) : null;
+        const uasScore =
+          row.uas_score !== null && row.uas_score !== undefined ? Number(row.uas_score) : null;
+        manualScoresMap[row.student_id] = {
+          studentId: row.student_id,
+          utsScore,
+          uasScore,
+          ...(row.updated_at ? { updatedAt: new Date(row.updated_at).toISOString() } : {}),
+        };
+      }
+
+      return res
+        .status(200)
+        .json({ attempts, setoranMap, studentRecords, examAccess, manualScoresMap });
     } catch (error) {
       console.error('Failed to load student data', error);
       return res.status(500).json({ error: 'Gagal memuat data nilai & setoran dari database.' });
@@ -532,6 +597,120 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ ok: true });
     }
 
+    if (action === 'delete-attempt') {
+      const attemptId = typeof body.attemptId === 'string' ? body.attemptId.trim() : '';
+      if (!attemptId || attemptId.length > 128) {
+        return res.status(400).json({ error: 'ID pengerjaan soal tidak valid.' });
+      }
+      const { rows } = await pool.query(
+        'DELETE FROM quiz_attempts WHERE id = $1 RETURNING id',
+        [attemptId]
+      );
+      return res.status(200).json({
+        ok: true,
+        deletedIds: rows.map((r) => String(r.id)),
+      });
+    }
+
+    if (action === 'reset-student-attempts') {
+      const rawStudentId = typeof body.studentId === 'string' ? body.studentId.trim() : '';
+      const studentId = rawStudentId && rawStudentId !== 'all' ? rawStudentId : '';
+      const studentIds = Array.isArray(body.studentIds)
+        ? body.studentIds
+            .filter(
+              (id: unknown): id is string =>
+                typeof id === 'string' && id.trim().length > 0 && id.trim().length <= 128
+            )
+            .map((id: string) => id.trim())
+        : [];
+      const babId = typeof body.babId === 'string' ? body.babId.trim() : '';
+      const hasNullSection = body.sectionNumber === null;
+      const sectionNumber =
+        typeof body.sectionNumber === 'number' &&
+        Number.isInteger(body.sectionNumber) &&
+        body.sectionNumber >= 1 &&
+        body.sectionNumber <= 12
+          ? body.sectionNumber
+          : null;
+      const tashrifType =
+        body.tashrifType === 'istilahi' || body.tashrifType === 'lughawi'
+          ? body.tashrifType
+          : '';
+      const mode =
+        typeof body.mode === 'string' && VALID_MODES.has(body.mode.trim())
+          ? body.mode.trim()
+          : '';
+
+      if (studentId.length > 128) {
+        return res.status(400).json({ error: 'ID siswa tidak valid.' });
+      }
+      if (studentIds.length > 500) {
+        return res.status(400).json({ error: 'Daftar ID siswa melebihi batas.' });
+      }
+      if (babId.length > 128) {
+        return res.status(400).json({ error: 'ID Bab tidak valid.' });
+      }
+      if (
+        body.sectionNumber !== undefined &&
+        body.sectionNumber !== null &&
+        sectionNumber === null
+      ) {
+        return res.status(400).json({ error: 'Nomor bagian tidak valid.' });
+      }
+      if (body.tashrifType !== undefined && !tashrifType) {
+        return res.status(400).json({ error: 'Jenis tashrif tidak valid.' });
+      }
+      if (body.mode !== undefined && !mode) {
+        return res.status(400).json({ error: 'Mode soal tidak valid.' });
+      }
+
+      const conditions: string[] = [];
+      const values: unknown[] = [];
+
+      if (studentId) {
+        values.push(studentId);
+        conditions.push(`student_id = $${values.length}`);
+      } else if (studentIds.length > 0) {
+        values.push(studentIds);
+        conditions.push(`student_id = ANY($${values.length}::text[])`);
+      }
+      if (babId) {
+        values.push(babId);
+        conditions.push(`bab_id = $${values.length}`);
+      }
+      if (hasNullSection) {
+        conditions.push('section_number IS NULL');
+      } else if (sectionNumber !== null) {
+        values.push(sectionNumber);
+        conditions.push(`section_number = $${values.length}`);
+      }
+      if (tashrifType === 'istilahi') {
+        conditions.push('((section_number BETWEEN 1 AND 6) OR mode = \'istilahi\')');
+      } else if (tashrifType === 'lughawi') {
+        conditions.push('((section_number BETWEEN 7 AND 12) OR mode = \'lughawi\')');
+      }
+      if (mode) {
+        values.push(mode);
+        conditions.push(`mode = $${values.length}`);
+      }
+
+      if (conditions.length === 0) {
+        return res.status(400).json({
+          error: 'Pilih minimal satu target siswa, bab, atau jenis soal untuk direset.',
+        });
+      }
+
+      const result = await pool.query(
+        `DELETE FROM quiz_attempts WHERE ${conditions.join(' AND ')} RETURNING id`,
+        values
+      );
+
+      return res.status(200).json({
+        ok: true,
+        deletedIds: result.rows.map((r) => String(r.id)),
+      });
+    }
+
     if (action === 'update-exam-access') {
       const nextAccess = sanitizeExamAccess(body.config);
       await pool.query(
@@ -544,6 +723,59 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         [JSON.stringify(nextAccess)]
       );
       return res.status(200).json({ ok: true, examAccess: nextAccess });
+    }
+
+    if (action === 'save-manual-scores') {
+      const entries = sanitizeManualScoreEntries(body.entries);
+      if (!entries) {
+        return res.status(400).json({
+          error: 'Format nilai UTS/UAS tidak valid. Nilai harus berupa angka 0 sampai 100 atau dikosongkan.',
+        });
+      }
+
+      const client = await pool.connect();
+      const saved: Record<
+        string,
+        { studentId: string; utsScore: number | null; uasScore: number | null; updatedAt?: string } | null
+      > = {};
+      try {
+        await client.query('BEGIN');
+        for (const item of entries) {
+          if (item.utsScore === null && item.uasScore === null) {
+            await client.query('DELETE FROM student_manual_scores WHERE student_id = $1', [
+              item.studentId,
+            ]);
+            saved[item.studentId] = null;
+          } else {
+            const upsertRes = await client.query(
+              `
+              INSERT INTO student_manual_scores (student_id, uts_score, uas_score, updated_at)
+              VALUES ($1, $2, $3, NOW())
+              ON CONFLICT (student_id)
+              DO UPDATE SET
+                uts_score = EXCLUDED.uts_score,
+                uas_score = EXCLUDED.uas_score,
+                updated_at = NOW()
+              RETURNING updated_at
+              `,
+              [item.studentId, item.utsScore, item.uasScore]
+            );
+            saved[item.studentId] = {
+              studentId: item.studentId,
+              utsScore: item.utsScore,
+              uasScore: item.uasScore,
+              updatedAt: new Date(upsertRes.rows[0].updated_at).toISOString(),
+            };
+          }
+        }
+        await client.query('COMMIT');
+        return res.status(200).json({ ok: true, saved });
+      } catch (err) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw err;
+      } finally {
+        client.release();
+      }
     }
 
     return res.status(400).json({ error: 'Aksi tidak dikenal.' });

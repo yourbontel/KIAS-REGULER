@@ -8,6 +8,10 @@ const pool = new Pool({
   max: 1,
 });
 
+pool.on('error', (err) => {
+  console.error('PostgreSQL idle client error (student-auth):', err.message);
+});
+
 const hashPassword = (password: string, studentId: string) => {
   if (/^v1_[a-f0-9]{16}$/i.test(password)) return password;
   return scryptSync(password, studentId, 64).toString('hex');

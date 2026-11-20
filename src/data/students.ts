@@ -55,6 +55,13 @@ export interface SetoranRecord {
   notes?: string;
 }
 
+export interface ManualScoreRecord {
+  studentId: string;
+  utsScore: number | null;
+  uasScore: number | null;
+  updatedAt?: string;
+}
+
 export const DEMO_STUDENTS: Student[] = [
   {
     id: 'demo-01',

@@ -1,4 +1,5 @@
 import {
+  ManualScoreRecord,
   PASSING_SCORE,
   QuizAttempt,
   SetoranRecord,
@@ -8,12 +9,20 @@ import {
 } from '../data/students';
 import { getBabsForClass } from '../data/shorofData';
 import { summarizeBabAttempts } from './babScores';
+import { computeFinalGradeSummary } from './finalGrades';
+
+export type RankingSortMode = 'total_score' | 'final_grade';
 
 export interface RankedStudentEntry {
   student: Student;
   rank: number | null;
   totalScore: number;
   avgScore: number | null;
+  utsScore: number | null;
+  uasScore: number | null;
+  finalScore: number | null;
+  finalGradeComplete: boolean;
+  finalGradePassed: boolean;
   completedBabsCount: number;
   totalBabsForClass: number;
   passedBabsCount: number;
@@ -21,7 +30,7 @@ export interface RankedStudentEntry {
   totalAttempts: number;
   /** Khusus filter per-Bab: nilai pada Bab yang dipilih */
   selectedBabScore: number | null;
-  /** Khusus filter per-Bab bertipe sectioned: jumlah Bagian selesai (0-6) */
+  /** Khusus filter per-Bab bertipe sectioned: jumlah Bagian selesai (0-12) */
   selectedBabPartialSections: number;
 }
 
@@ -30,6 +39,8 @@ export interface RankingFilterOptions {
   gender?: 'Semua' | StudentGender;
   babId?: 'all' | string;
   search?: string;
+  manualScoresMap?: Record<string, ManualScoreRecord>;
+  sortMode?: RankingSortMode;
 }
 
 export function computeStudentRankings(
@@ -43,6 +54,8 @@ export function computeStudentRankings(
     gender = 'Semua',
     babId = 'all',
     search = '',
+    manualScoresMap = {},
+    sortMode = 'total_score',
   } = options;
 
   const q = search.trim().toLowerCase();
@@ -92,12 +105,21 @@ export function computeStudentRankings(
 
     const avgScore =
       completedBabsCount > 0 ? Math.round(totalScore / completedBabsCount) : null;
+    const gradeSummary = computeFinalGradeSummary(
+      avgScore,
+      manualScoresMap[student.id]
+    );
 
     return {
       student,
       rank: null,
       totalScore,
       avgScore,
+      utsScore: gradeSummary.utsScore,
+      uasScore: gradeSummary.uasScore,
+      finalScore: gradeSummary.finalScore,
+      finalGradeComplete: gradeSummary.isComplete,
+      finalGradePassed: gradeSummary.passed,
       completedBabsCount,
       totalBabsForClass: classBabs.length,
       passedBabsCount,
@@ -119,6 +141,20 @@ export function computeStudentRankings(
       }
       if (a.selectedBabPartialSections !== b.selectedBabPartialSections) {
         return b.selectedBabPartialSections - a.selectedBabPartialSections;
+      }
+      if (a.totalScore !== b.totalScore) return b.totalScore - a.totalScore;
+      return a.student.name.localeCompare(b.student.name, 'id');
+    }
+
+    if (sortMode === 'final_grade') {
+      const aHas = a.finalScore !== null;
+      const bHas = b.finalScore !== null;
+      if (aHas !== bHas) return aHas ? -1 : 1;
+      if ((a.finalScore ?? 0) !== (b.finalScore ?? 0)) {
+        return (b.finalScore ?? 0) - (a.finalScore ?? 0);
+      }
+      if (a.finalGradeComplete !== b.finalGradeComplete) {
+        return a.finalGradeComplete ? -1 : 1;
       }
       if (a.totalScore !== b.totalScore) return b.totalScore - a.totalScore;
       return a.student.name.localeCompare(b.student.name, 'id');
@@ -149,6 +185,8 @@ export function computeStudentRankings(
     const hasScore =
       babId !== 'all'
         ? entry.selectedBabScore !== null
+        : sortMode === 'final_grade'
+        ? entry.finalScore !== null
         : entry.completedBabsCount > 0;
     if (!hasScore) {
       entry.rank = null;
@@ -158,6 +196,8 @@ export function computeStudentRankings(
     const scoreKey =
       babId !== 'all'
         ? `${entry.selectedBabScore}`
+        : sortMode === 'final_grade'
+        ? `${entry.finalScore}-${entry.finalGradeComplete ? 1 : 0}`
         : `${entry.totalScore}-${entry.avgScore ?? 0}`;
     if (scoreKey === lastScoreKey) {
       entry.rank = lastRank;
@@ -171,9 +211,16 @@ export function computeStudentRankings(
   return entries;
 }
 
-export function isEntryPassing(entry: RankedStudentEntry, babId: 'all' | string): boolean {
+export function isEntryPassing(
+  entry: RankedStudentEntry,
+  babId: 'all' | string,
+  sortMode: RankingSortMode = 'total_score'
+): boolean {
   if (babId !== 'all') {
     return entry.selectedBabScore !== null && entry.selectedBabScore >= PASSING_SCORE;
+  }
+  if (sortMode === 'final_grade') {
+    return entry.finalGradePassed;
   }
   return entry.avgScore !== null && entry.avgScore >= PASSING_SCORE;
 }
