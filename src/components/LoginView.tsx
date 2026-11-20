@@ -11,9 +11,11 @@ import {
   AlertCircle,
   BookOpen,
   ChevronRight,
+  ChevronDown,
   MapPin,
   Users,
   X,
+  UserPlus,
 } from 'lucide-react';
 import { Student, StudentClass, StudentGender } from '../data/students';
 import { StudentPasswordMap } from '../utils/auth';
@@ -31,6 +33,7 @@ interface LoginViewProps {
   onLoginSuperadmin: (username: string, password: string) => Promise<string | null>;
   onLoginStudent: (studentId: string, password: string) => Promise<string | null>;
   onRegisterStudentPassword: (studentId: string, newPassword: string) => Promise<string | null>;
+  onRegisterUnlistedStudent: (student: Omit<Student, 'id'>) => Promise<{ student: Student | null; error: string | null }>;
 }
 
 type LoginTab = 'student' | 'superadmin';
@@ -41,6 +44,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
   onLoginSuperadmin,
   onLoginStudent,
   onRegisterStudentPassword,
+  onRegisterUnlistedStudent,
 }) => {
   const [activeTab, setActiveTab] = useState<LoginTab>('student');
 
@@ -56,6 +60,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [showStudentPass, setShowStudentPass] = useState(false);
   const [studentError, setStudentError] = useState<string | null>(null);
   const [studentBusy, setStudentBusy] = useState(false);
+  const [showUnlistedForm, setShowUnlistedForm] = useState(false);
+  const [unlistedName, setUnlistedName] = useState('');
+  const [unlistedClass, setUnlistedClass] = useState<StudentClass>('Reguler 1');
+  const [unlistedGender, setUnlistedGender] = useState<StudentGender>('Ikhwan');
+  const [unlistedCity, setUnlistedCity] = useState('');
+  const [unlistedError, setUnlistedError] = useState<string | null>(null);
 
   // Superadmin login state
   const [adminUsername, setAdminUsername] = useState('');
@@ -448,6 +458,94 @@ export const LoginView: React.FC<LoginViewProps> = ({
                           })
                         )}
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowUnlistedForm((shown) => !shown);
+                          setUnlistedError(null);
+                        }}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-300 bg-emerald-50/60 px-4 py-2.5 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-50"
+                      >
+                        <UserPlus className="h-4 w-4" />
+                        Nama saya belum terdaftar
+                      </button>
+                      {showUnlistedForm && (
+                        <div className="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm">
+                          <div className="flex items-start gap-3 border-b border-emerald-100 bg-emerald-50/70 px-4 py-3.5">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
+                              <UserPlus className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <h3 className="text-sm font-bold text-slate-900">Daftar sebagai siswa baru</h3>
+                              <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">Isi data sesuai identitas Anda. Pastikan nama belum tersedia di daftar siswa.</p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3.5 p-4">
+                            <div>
+                              <label htmlFor="unlisted-student-name" className="mb-1.5 block text-xs font-semibold text-slate-700">Nama lengkap</label>
+                              <input id="unlisted-student-name" value={unlistedName} onChange={(event) => setUnlistedName(event.target.value)} maxLength={200} placeholder="Contoh: Ahmad Fauzan" autoComplete="name" className="w-full rounded-xl border border-slate-200 bg-[#F8FAFC] px-3.5 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100" />
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                              <div>
+                                <label htmlFor="unlisted-student-class" className="mb-1.5 block text-xs font-semibold text-slate-700">Kelas</label>
+                                <div className="relative">
+                                  <select id="unlisted-student-class" value={unlistedClass} onChange={(event) => setUnlistedClass(event.target.value as StudentClass)} className="w-full appearance-none rounded-xl border border-slate-200 bg-[#F8FAFC] px-3.5 py-2.5 pr-10 text-sm font-semibold text-slate-700 shadow-sm outline-none transition hover:border-emerald-300 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100">
+                                    <option value="Reguler 1">Reguler 1</option>
+                                    <option value="Reguler 2">Reguler 2</option>
+                                  </select>
+                                  <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-700" />
+                                </div>
+                              </div>
+                              <div>
+                                <label htmlFor="unlisted-student-gender" className="mb-1.5 block text-xs font-semibold text-slate-700">Kelompok</label>
+                                <div className="relative">
+                                  <select id="unlisted-student-gender" value={unlistedGender} onChange={(event) => setUnlistedGender(event.target.value as StudentGender)} className="w-full appearance-none rounded-xl border border-slate-200 bg-[#F8FAFC] px-3.5 py-2.5 pr-10 text-sm font-semibold text-slate-700 shadow-sm outline-none transition hover:border-emerald-300 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100">
+                                    <option value="Ikhwan">Ikhwan (Putra)</option>
+                                    <option value="Akhwat">Akhwat (Putri)</option>
+                                  </select>
+                                  <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-700" />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label htmlFor="unlisted-student-city" className="mb-1.5 block text-xs font-semibold text-slate-700">Kota asal <span className="font-normal text-slate-400">(opsional)</span></label>
+                              <input id="unlisted-student-city" value={unlistedCity} onChange={(event) => setUnlistedCity(event.target.value)} maxLength={120} placeholder="Contoh: Bekasi" autoComplete="address-level2" className="w-full rounded-xl border border-slate-200 bg-[#F8FAFC] px-3.5 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100" />
+                            </div>
+
+                            {unlistedError && <div role="alert" className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-700"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /><span>{unlistedError}</span></div>}
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={studentBusy || !unlistedName.trim()}
+                            onClick={async () => {
+                              setStudentBusy(true);
+                              setUnlistedError(null);
+                              const result = await onRegisterUnlistedStudent({
+                                name: unlistedName.trim(),
+                                kelas: unlistedClass,
+                                gender: unlistedGender,
+                                kota: unlistedCity.trim() || '-',
+                              });
+                              if (result.error || !result.student) {
+                                setUnlistedError(result.error || 'Pendaftaran belum berhasil.');
+                              } else {
+                                setShowUnlistedForm(false);
+                                setUnlistedName('');
+                                setSearchQuery('');
+                                handleSelectStudent(result.student.id);
+                              }
+                              setStudentBusy(false);
+                            }}
+                            className="mx-4 mb-4 flex w-[calc(100%-2rem)] items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {studentBusy ? 'Mendaftarkan...' : <><UserPlus className="h-4 w-4" /> Daftarkan & Lanjutkan</>}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </>
                 ) : (

@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Pool } from 'pg';
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { SHOROF_BABS_REGULER_1 } from '../src/data/babs/reguler1';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL_POOLED || process.env.DATABASE_URL,
@@ -91,6 +92,10 @@ function ensureTables(): Promise<void> {
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
       `);
+      await pool.query(`CREATE TABLE IF NOT EXISTS question_issues (
+        question_id TEXT PRIMARY KEY, bab_id TEXT NOT NULL, bab_kode TEXT NOT NULL,
+        prompt_id TEXT NOT NULL, note TEXT, marked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), marked_by TEXT NOT NULL
+      )`);
     })().catch((err) => {
       tablesReadyPromise = null;
       throw err;
@@ -155,8 +160,9 @@ function validateStudentPayload(raw: unknown) {
 function sanitizeExamAccess(raw: unknown) {
   const babs: Record<string, boolean> = {};
   const sections: Record<string, boolean> = {};
+  const tashrifTypes: Record<string, boolean> = {};
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return { babs, sections };
+    return { babs, sections, tashrifTypes };
   }
   const obj = raw as Record<string, unknown>;
   if (obj.babs && typeof obj.babs === 'object' && !Array.isArray(obj.babs)) {
@@ -173,17 +179,41 @@ function sanitizeExamAccess(raw: unknown) {
       }
     }
   }
-  return { babs, sections };
+  if (obj.tashrifTypes && typeof obj.tashrifTypes === 'object' && !Array.isArray(obj.tashrifTypes)) {
+    for (const [key, value] of Object.entries(obj.tashrifTypes)) {
+      if (
+        ['Reguler 1:istilahi', 'Reguler 1:lughawi', 'Reguler 2:istilahi', 'Reguler 2:lughawi'].includes(key) &&
+        typeof value === 'boolean'
+      ) {
+        tashrifTypes[key] = value;
+      }
+    }
+  }
+  const semester1EndBabId = typeof obj.semester1EndBabId === 'string' && obj.semester1EndBabId.length <= 128
+    ? obj.semester1EndBabId
+    : undefined;
+  return { babs, sections, tashrifTypes, semester1EndBabId };
 }
 
 function isExamOpenServer(
-  access: { babs: Record<string, boolean>; sections: Record<string, boolean> },
+  access: { babs: Record<string, boolean>; sections: Record<string, boolean>; tashrifTypes: Record<string, boolean>; semester1EndBabId?: string },
   babId: string,
-  sectionNumber: number | null
+  sectionNumber: number | null,
+  studentClass?: string
 ): boolean {
   if (access.babs[babId] === false) return false;
+  if (studentClass === 'Reguler 1' && access.semester1EndBabId) {
+    const semesterBabs = SHOROF_BABS_REGULER_1;
+    const endIndex = semesterBabs.findIndex((bab) => bab.id === access.semester1EndBabId);
+    const babIndex = semesterBabs.findIndex((bab) => bab.id === babId);
+    if (endIndex >= 0 && (babIndex < 0 || babIndex > endIndex)) return false;
+  }
   if (sectionNumber !== null && access.sections[`${babId}:${sectionNumber}`] === false) {
     return false;
+  }
+  if (sectionNumber !== null && studentClass && sectionNumber >= 1 && sectionNumber <= 12) {
+    const type = sectionNumber <= 6 ? 'istilahi' : 'lughawi';
+    if (access.tashrifTypes[`${studentClass}:${type}`] === false) return false;
   }
   return true;
 }
@@ -265,6 +295,9 @@ function sanitizeReviewItems(raw: unknown) {
       selectedOptionId: obj.selectedOptionId,
       correctOptionId: obj.correctOptionId,
       explanation: obj.explanation,
+      ...(typeof obj.markedAsProblem === 'boolean'
+        ? { markedAsProblem: obj.markedAsProblem }
+        : {}),
     });
   }
   return sanitized;
@@ -297,12 +330,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      const [attemptResult, setoranResult, studentResult, accessResult, manualScoresResult] =
+      const [attemptResult, setoranResult, studentResult, accessResult, manualScoresResult, issueResult] =
         await Promise.all([
           pool.query(`
             SELECT
               id, student_id, timestamp, bab_id, bab_label, section_number,
               mode, score, correct_count, total_questions,
+              COALESCE((
+                SELECT COUNT(*)
+                FROM jsonb_array_elements(COALESCE(review_items, '[]'::jsonb)) AS review_item
+                WHERE review_item->>'markedAsProblem' = 'true'
+              ), 0) AS marked_question_count,
               (review_items IS NOT NULL) AS has_review
             FROM quiz_attempts
             ORDER BY created_at DESC, id DESC
@@ -326,6 +364,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             SELECT student_id, uts_score, uas_score, updated_at
             FROM student_manual_scores
           `),
+          pool.query('SELECT question_id, bab_id, bab_kode, prompt_id, note, marked_at, marked_by FROM question_issues'),
         ]);
 
       const attempts = attemptResult.rows.map((row) => ({
@@ -341,6 +380,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         score: Number(row.score),
         correctCount: Number(row.correct_count),
         totalQuestions: Number(row.total_questions),
+        markedQuestionCount: Number(row.marked_question_count),
         hasReview: Boolean(row.has_review),
       }));
 
@@ -388,9 +428,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         };
       }
 
+      const questionIssues: Record<string, object> = {};
+      for (const row of issueResult.rows) {
+        questionIssues[row.question_id] = {
+          questionId: row.question_id, babId: row.bab_id, babKode: row.bab_kode, promptId: row.prompt_id,
+          ...(row.note ? { note: row.note } : {}), markedAt: new Date(row.marked_at).toISOString(), markedBy: row.marked_by,
+        };
+      }
+
       return res
         .status(200)
-        .json({ attempts, setoranMap, studentRecords, examAccess, manualScoresMap });
+        .json({ attempts, setoranMap, studentRecords, examAccess, manualScoresMap, questionIssues });
     } catch (error) {
       console.error('Failed to load student data', error);
       return res.status(500).json({ error: 'Gagal memuat data nilai & setoran dari database.' });
@@ -407,6 +455,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     await ensureTables();
+
+    if (action === 'register-unlisted-student') {
+      const raw = body.student;
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+        return res.status(400).json({ error: 'Data siswa tidak valid.' });
+      }
+      const input = raw as Record<string, unknown>;
+      const name = typeof input.name === 'string' ? input.name.trim() : '';
+      const kelas = input.kelas;
+      const gender = input.gender;
+      const kota = typeof input.kota === 'string' ? input.kota.trim() : '';
+      if (
+        !name || name.length > 200 ||
+        (kelas !== 'Reguler 1' && kelas !== 'Reguler 2') ||
+        (gender !== 'Ikhwan' && gender !== 'Akhwat') ||
+        kota.length > 120
+      ) {
+        return res.status(400).json({ error: 'Nama, kelas, kelompok, atau kota tidak valid.' });
+      }
+      const duplicate = await pool.query(
+        'SELECT id FROM student_records WHERE LOWER(name) = LOWER($1) AND kelas = $2 LIMIT 1',
+        [name, kelas]
+      );
+      if (duplicate.rows[0]) {
+        return res.status(409).json({ error: 'Nama tersebut sudah terdaftar. Silakan cari di daftar siswa.' });
+      }
+      const student = {
+        id: `reg-${randomUUID()}`,
+        name,
+        kelas,
+        gender,
+        kota: kota || '-',
+      };
+      await pool.query(
+        'INSERT INTO student_records (id, name, kelas, gender, kota, updated_at) VALUES ($1, $2, $3, $4, $5, NOW())',
+        [student.id, student.name, student.kelas, student.gender, student.kota]
+      );
+      return res.status(201).json({ ok: true, student });
+    }
 
     if (action === 'save-attempt') {
       const attempt = body.attempt;
@@ -464,7 +551,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         "SELECT config FROM exam_access_config WHERE id = 'global' LIMIT 1"
       );
       const currentAccess = sanitizeExamAccess(accessRow.rows[0]?.config);
-      if (!isExamOpenServer(currentAccess, babId, cleanSection)) {
+      const studentRow = await pool.query('SELECT kelas FROM student_records WHERE id = $1 LIMIT 1', [studentId]);
+      const studentClass = studentRow.rows[0]?.kelas || null;
+      if (cleanSection !== null && !studentClass) {
+        return res.status(403).json({ error: 'Kelas siswa tidak dapat diverifikasi. Hubungi Superadmin.' });
+      }
+      if (!isExamOpenServer(currentAccess, babId, cleanSection, studentClass)) {
         return res.status(403).json({
           error: 'Akses soal ini sedang ditutup oleh Superadmin.',
         });
@@ -513,6 +605,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(401).json({
         error: 'Sesi superadmin tidak valid atau telah berakhir. Silakan login kembali.',
       });
+    }
+
+    if (action === 'sync-seed-students') {
+      const { INITIAL_STUDENTS } = await import('../src/data/students');
+      const values: unknown[] = [];
+      const placeholders = INITIAL_STUDENTS.map((student, index) => {
+        const offset = index * 6;
+        values.push(student.id, student.name, student.kelas, student.gender, student.kota, student.catatan ?? null);
+        return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, NOW())`;
+      });
+      if (placeholders.length > 0) {
+        await pool.query(
+          `INSERT INTO student_records (id, name, kelas, gender, kota, catatan, updated_at)
+           VALUES ${placeholders.join(', ')}
+           ON CONFLICT (id) DO NOTHING`,
+          values
+        );
+      }
+      return res.status(200).json({ ok: true });
     }
 
     if (action === 'toggle-setoran') {
@@ -776,6 +887,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } finally {
         client.release();
       }
+    }
+
+    if (action === 'upsert-question-issue') {
+      const issue = body.issue;
+      if (!issue || typeof issue !== 'object' || Array.isArray(issue)) return res.status(400).json({ error: 'Data penandaan soal tidak valid.' });
+      const item = issue as Record<string, unknown>;
+      const required = ['questionId', 'babId', 'babKode', 'promptId', 'markedBy'];
+      if (required.some((key) => typeof item[key] !== 'string' || !(item[key] as string).trim())) return res.status(400).json({ error: 'Identitas soal tidak valid.' });
+      const result = await pool.query(
+        `INSERT INTO question_issues (question_id, bab_id, bab_kode, prompt_id, note, marked_by, marked_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW())
+         ON CONFLICT (question_id) DO UPDATE SET bab_id=EXCLUDED.bab_id, bab_kode=EXCLUDED.bab_kode,
+         prompt_id=EXCLUDED.prompt_id, note=EXCLUDED.note, marked_by=EXCLUDED.marked_by, marked_at=NOW()
+         RETURNING question_id, bab_id, bab_kode, prompt_id, note, marked_at, marked_by`,
+        [item.questionId, item.babId, item.babKode, item.promptId, typeof item.note === 'string' ? item.note.trim() || null : null, item.markedBy]
+      );
+      const row = result.rows[0];
+      return res.status(200).json({ ok: true, issue: { questionId: row.question_id, babId: row.bab_id, babKode: row.bab_kode, promptId: row.prompt_id, note: row.note || undefined, markedAt: new Date(row.marked_at).toISOString(), markedBy: row.marked_by } });
+    }
+
+    if (action === 'delete-question-issue') {
+      const questionId = typeof body.questionId === 'string' ? body.questionId.trim() : '';
+      if (!questionId || questionId.length > 200) return res.status(400).json({ error: 'ID soal tidak valid.' });
+      await pool.query('DELETE FROM question_issues WHERE question_id = $1', [questionId]);
+      return res.status(200).json({ ok: true });
     }
 
     return res.status(400).json({ error: 'Aksi tidak dikenal.' });

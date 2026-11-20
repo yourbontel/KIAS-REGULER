@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   ChevronDown,
+  Check,
   Lock,
   LockOpen,
   ShieldCheck,
@@ -15,8 +16,12 @@ import { SECTION_NUMBERS as SECTION_NUMBERS_LIST } from '../utils/babScores';
 import {
   ExamAccessConfig,
   isBabOpen,
+  isExamSectionOpen,
   isSectionOpen,
   sectionAccessKey,
+  tashrifAccessKey,
+  isBabWithinSemester1,
+  type TashrifType,
 } from '../utils/examAccess';
 
 interface ExamAccessControlViewProps {
@@ -32,6 +37,7 @@ export const ExamAccessControlView: React.FC<ExamAccessControlViewProps> = ({
 }) => {
   const [selectedClass, setSelectedClass] = useState<StudentClass>('Reguler 1');
   const [expandedBabId, setExpandedBabId] = useState<string | null>(null);
+  const [isSemesterBabMenuOpen, setIsSemesterBabMenuOpen] = useState(false);
 
   const classBabs = useMemo(() => getBabsForClass(selectedClass), [selectedClass]);
 
@@ -47,12 +53,31 @@ export const ExamAccessControlView: React.FC<ExamAccessControlViewProps> = ({
 
   const openBabsCount = classBabs.filter((b) => isBabOpen(examAccess, b.id)).length;
 
+  const handleSemester1EndBabChange = (babId: string) => {
+    void onUpdateExamAccess({
+      ...examAccess,
+      semester1EndBabId: babId || undefined,
+    });
+  };
+
+  const handleToggleTashrifType = (type: TashrifType) => {
+    const key = tashrifAccessKey(selectedClass, type);
+    void onUpdateExamAccess({
+      babs: { ...examAccess.babs },
+      sections: { ...examAccess.sections },
+      tashrifTypes: { ...examAccess.tashrifTypes, [key]: examAccess.tashrifTypes[key] === false },
+      semester1EndBabId: examAccess.semester1EndBabId,
+    });
+  };
+
   const handleToggleBab = (bab: ShorofBab) => {
     const currentlyOpen = isBabOpen(examAccess, bab.id);
     const nextBabs = { ...examAccess.babs, [bab.id]: !currentlyOpen };
     void onUpdateExamAccess({
       babs: nextBabs,
       sections: { ...examAccess.sections },
+      tashrifTypes: { ...examAccess.tashrifTypes },
+      semester1EndBabId: examAccess.semester1EndBabId,
     });
   };
 
@@ -67,7 +92,7 @@ export const ExamAccessControlView: React.FC<ExamAccessControlViewProps> = ({
         });
       }
     });
-    void onUpdateExamAccess({ babs: nextBabs, sections: nextSections });
+    void onUpdateExamAccess({ babs: nextBabs, sections: nextSections, tashrifTypes: { ...examAccess.tashrifTypes }, semester1EndBabId: examAccess.semester1EndBabId });
   };
 
   const handleToggleSection = (babId: string, sectionNumber: number) => {
@@ -80,7 +105,7 @@ export const ExamAccessControlView: React.FC<ExamAccessControlViewProps> = ({
       ...examAccess.sections,
       [sectionAccessKey(babId, sectionNumber)]: !currentlyOpen,
     };
-    void onUpdateExamAccess({ babs: nextBabs, sections: nextSections });
+    void onUpdateExamAccess({ babs: nextBabs, sections: nextSections, tashrifTypes: { ...examAccess.tashrifTypes }, semester1EndBabId: examAccess.semester1EndBabId });
   };
 
   const handleToggleAllSectionsForBab = (babId: string, open: boolean) => {
@@ -89,11 +114,118 @@ export const ExamAccessControlView: React.FC<ExamAccessControlViewProps> = ({
     SECTION_NUMBERS_LIST.forEach((n) => {
       nextSections[sectionAccessKey(babId, n)] = open;
     });
-    void onUpdateExamAccess({ babs: nextBabs, sections: nextSections });
+    void onUpdateExamAccess({ babs: nextBabs, sections: nextSections, tashrifTypes: { ...examAccess.tashrifTypes }, semester1EndBabId: examAccess.semester1EndBabId });
   };
 
   return (
     <div className="space-y-6">
+      <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Akses Tasrif Ujian Per Bab</h2>
+            <p className="text-xs text-slate-500 mt-1">Pengaturan berlaku untuk semua bab di kelas terpilih.</p>
+          </div>
+          <div role="group" aria-label="Pilih kelas akses tasrif" className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-slate-100 border border-slate-200">
+            {(['Reguler 1', 'Reguler 2'] as const).map((kelas) => (
+              <button key={kelas} type="button" onClick={() => setSelectedClass(kelas)} className={`px-3 py-1.5 rounded-md text-xs font-semibold ${selectedClass === kelas ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600'}`}>
+                {kelas}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {([
+            { type: 'istilahi', label: 'Tashrif Istilahi', sections: 'Bagian 1–6' },
+            { type: 'lughawi', label: 'Tashrif Lughawi', sections: 'Bagian 7–12' },
+          ] as const).map(({ type, label, sections }) => {
+            const open = examAccess.tashrifTypes[tashrifAccessKey(selectedClass, type)] !== false;
+            return (
+              <div key={type} className="flex items-center justify-between gap-3 border border-slate-200 rounded-lg p-4">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">{label}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">{sections}</div>
+                </div>
+                <button type="button" disabled={saving} onClick={() => handleToggleTashrifType(type)} aria-pressed={open} className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border disabled:opacity-50 ${open ? 'text-rose-700 bg-rose-50 border-rose-200 hover:bg-rose-100' : 'text-white bg-emerald-700 border-emerald-700 hover:bg-emerald-800'}`}>
+                  {open ? <><Lock className="w-3.5 h-3.5" /> Kunci</> : <><LockOpen className="w-3.5 h-3.5" /> Buka</>}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        {saving && <div className="text-xs text-emerald-700 font-semibold">Menyimpan perubahan...</div>}
+      </div>
+
+      {selectedClass === 'Reguler 1' && (
+        <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6">
+          <label htmlFor="semester1-end-bab" className="block text-sm font-bold text-slate-900">Batas Bab Ujian Semester 1</label>
+          <p className="text-xs text-slate-500 mt-1 mb-3">Peserta hanya dapat mengerjakan ujian sampai bab yang dipilih, termasuk bab tersebut.</p>
+          <div className="relative w-full sm:max-w-md">
+            <button
+              id="semester1-end-bab"
+              type="button"
+              disabled={saving}
+              aria-haspopup="listbox"
+              aria-expanded={isSemesterBabMenuOpen}
+              onClick={() => setIsSemesterBabMenuOpen((open) => !open)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') setIsSemesterBabMenuOpen(false);
+              }}
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-left shadow-sm transition hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-50"
+            >
+              <span className="min-w-0">
+                <span className="block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Batas materi</span>
+                <span className="mt-0.5 block truncate text-sm font-semibold text-slate-900">
+                  {examAccess.semester1EndBabId
+                    ? (() => {
+                        const selectedBab = classBabs.find((bab) => bab.id === examAccess.semester1EndBabId);
+                        return selectedBab ? `${selectedBab.kode} · ${selectedBab.wazanLatin}` : 'Semua bab (tanpa batas)';
+                      })()
+                    : 'Semua bab (tanpa batas)'}
+                </span>
+              </span>
+              <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${isSemesterBabMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isSemesterBabMenuOpen && (
+              <>
+                <button type="button" aria-label="Tutup daftar batas bab" className="fixed inset-0 z-10 cursor-default" onClick={() => setIsSemesterBabMenuOpen(false)} />
+                <div role="listbox" aria-labelledby="semester1-end-bab" className="absolute z-20 mt-2 max-h-80 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/10">
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={!examAccess.semester1EndBabId}
+                    onClick={() => { handleSemester1EndBabChange(''); setIsSemesterBabMenuOpen(false); }}
+                    className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition ${!examAccess.semester1EndBabId ? 'bg-emerald-50 text-emerald-900' : 'text-slate-700 hover:bg-slate-50'}`}
+                  >
+                    <span><span className="block font-semibold">Semua bab</span><span className="mt-0.5 block text-xs text-slate-500">Tanpa batas materi</span></span>
+                    {!examAccess.semester1EndBabId && <Check className="h-4 w-4 text-emerald-700" />}
+                  </button>
+                  <div className="my-1.5 border-t border-slate-100" />
+                  {classBabs.map((bab) => {
+                    const selected = examAccess.semester1EndBabId === bab.id;
+                    return (
+                      <button
+                        key={bab.id}
+                        type="button"
+                        role="option"
+                        aria-selected={selected}
+                        onClick={() => { handleSemester1EndBabChange(bab.id); setIsSemesterBabMenuOpen(false); }}
+                        className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition ${selected ? 'bg-emerald-50 text-emerald-900' : 'text-slate-700 hover:bg-slate-50'}`}
+                      >
+                        <span className="flex min-w-0 items-center gap-3">
+                          <span className={`flex h-7 w-12 shrink-0 items-center justify-center rounded-md text-[11px] font-bold ${selected ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>{bab.kode}</span>
+                          <span className="truncate text-sm font-medium">{bab.wazanLatin}</span>
+                        </span>
+                        {selected && <Check className="h-4 w-4 shrink-0 text-emerald-700" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Control Header Card */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="space-y-1">
@@ -189,7 +321,8 @@ export const ExamAccessControlView: React.FC<ExamAccessControlViewProps> = ({
 
             <div className="space-y-3">
               {group.items.map((bab) => {
-                const babOpen = isBabOpen(examAccess, bab.id);
+                const withinSemester = isBabWithinSemester1(examAccess, selectedClass, bab.id);
+                const babOpen = isBabOpen(examAccess, bab.id) && withinSemester;
                 const openSectionCount = bab.sectionedExam
                   ? SECTION_NUMBERS_LIST.filter((n) => isSectionOpen(examAccess, bab.id, n))
                       .length
@@ -334,7 +467,7 @@ export const ExamAccessControlView: React.FC<ExamAccessControlViewProps> = ({
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                               {secGroup.sections.map((sec) => {
-                                const open = isSectionOpen(examAccess, bab.id, sec.number);
+                                const open = isExamSectionOpen(examAccess, selectedClass, bab.id, sec.number);
                                 return (
                                   <button
                                     key={sec.number}

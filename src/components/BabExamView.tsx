@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Award,
   BookOpenCheck,
+  Check,
   ChevronDown,
   Clock,
   Eye,
@@ -32,8 +33,46 @@ import {
   type ExamAccessConfig,
   isBabOpen,
   isSectionOpen,
+  isExamSectionOpen,
+  isBabWithinSemester1,
 } from '../utils/examAccess';
 import { buildExamUrl, buildReviewUrl } from '../utils/examSession';
+
+const CLASS_OPTIONS: StudentClass[] = ['Reguler 1', 'Reguler 2'];
+
+const ClassDropdown = ({ value, onChange }: { value: StudentClass; onChange: (value: StudentClass) => void }) => {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const close = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button type="button" aria-label="Kelas" aria-haspopup="listbox" aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs font-semibold text-slate-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+        <span>{value}</span>
+        <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${open ? 'rotate-180 text-emerald-600' : ''}`} />
+      </button>
+      {open && <div role="listbox" aria-label="Pilih kelas" className="absolute left-0 right-0 z-30 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/10">
+        {CLASS_OPTIONS.map((option) => {
+          const selected = option === value;
+          return <button key={option} type="button" role="option" aria-selected={selected}
+            onClick={() => { onChange(option); setOpen(false); }}
+            className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition ${selected ? 'bg-emerald-50 font-semibold text-emerald-800' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+            {option}{selected && <Check className="h-3.5 w-3.5 text-emerald-600" />}
+          </button>;
+        })}
+      </div>}
+    </div>
+  );
+};
 
 interface BabExamViewProps {
   students: Student[];
@@ -96,7 +135,10 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
   );
 
   const activeClass: StudentClass = activeStudent?.kelas || filterClass;
-  const activeBabs = useMemo(() => getBabsForClass(activeClass), [activeClass]);
+  const activeBabs = useMemo(
+    () => getBabsForClass(activeClass).filter((bab) => isBabWithinSemester1(examAccess, activeClass, bab.id)),
+    [activeClass, examAccess]
+  );
 
   const groupedBabs = useMemo(() => {
     const groups: { kategori: ShorofBab['kategori']; items: ShorofBab[] }[] = [];
@@ -133,9 +175,10 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
   ]);
 
   const startExamForBab = (bab: ShorofBab, sectionNumber?: number) => {
-    if (!isSectionOpen(examAccess, bab.id, sectionNumber ?? null)) {
+    if (!isExamSectionOpen(examAccess, activeClass, bab.id, sectionNumber ?? null)) {
       return;
     }
+    if (!isBabWithinSemester1(examAccess, activeClass, bab.id)) return;
     if (
       bab.sectionedExam &&
       sectionNumber &&
@@ -171,16 +214,38 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
     const targetBab =
       activeBabs.find((b) => b.id === requestedBabId) ||
       ALL_SHOROF_BABS.find((b) => b.id === requestedBabId);
-    // Bab per-Bagian: buka dropdown daftar bagian agar siswa bisa memilih Bagian atau melihat hasil
     if (targetBab) {
       if (targetBab.sectionedExam) {
-        setOpenSectionDropdown(targetBab.id);
+        const sections = [...ISTILAHI_SECTIONS, ...LUGHAWI_SECTIONS];
+        const nextSection = sections.find(
+            (section) =>
+              isExamSectionOpen(examAccess, activeClass, targetBab.id, section.number) &&
+            !attempts.some(
+              (attempt) =>
+                attempt.studentId === activeStudent?.id &&
+                attempt.babId === targetBab.id && attempt.sectionNumber === section.number
+            )
+        );
+
+        if (nextSection) {
+          startExamForBab(targetBab, nextSection.number);
+        } else {
+          setOpenSectionDropdown(targetBab.id);
+        }
       } else {
         startExamForBab(targetBab);
       }
     }
     onClearRequestedBab?.();
-  }, [requestedBabId, activeBabs, onClearRequestedBab]);
+  }, [
+    requestedBabId,
+    activeBabs,
+    activeClass,
+    attempts,
+    examAccess,
+    onClearRequestedBab,
+    activeStudent,
+  ]);
 
   const studentAttempts = useMemo(
     () => attempts.filter((a) => a.studentId === activeStudent?.id),
@@ -291,15 +356,7 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-1.5">
-              <select
-                aria-label="Kelas"
-                value={filterClass}
-                onChange={(e) => onChangeClass(e.target.value as StudentClass)}
-                className="px-2.5 py-1.5 text-xs bg-[#F8FAFC] border border-slate-200 rounded-lg"
-              >
-                <option value="Reguler 1">Reguler 1</option>
-                <option value="Reguler 2">Reguler 2</option>
-              </select>
+              <ClassDropdown value={filterClass} onChange={onChangeClass} />
               <select
                 aria-label="Kelompok"
                 value={filterGender}
@@ -581,7 +638,7 @@ export const BabExamView: React.FC<BabExamViewProps> = ({
                                             <Eye className="w-3.5 h-3.5" />
                                             Lihat Jawaban
                                           </button>
-                                        ) : !isSectionOpen(examAccess, bab.id, sectionNo) ? (
+                                        ) : !isExamSectionOpen(examAccess, activeClass, bab.id, sectionNo) ? (
                                           <button
                                             type="button"
                                             disabled

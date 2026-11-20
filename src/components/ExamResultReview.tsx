@@ -5,6 +5,7 @@ import {
   Clock,
   Loader2,
   RotateCcw,
+  Flag,
   XCircle,
 } from 'lucide-react';
 import { PASSING_SCORE, QuizAttemptReviewItem } from '../data/students';
@@ -69,6 +70,7 @@ export const ExamResultReview: React.FC<ExamResultReviewProps> = ({
     [indexedItems]
   );
   const wrongTotal = indexedItems.length - correctTotal;
+  const markedTotal = indexedItems.filter((entry) => entry.item.markedAsProblem).length;
 
   const filteredItems = useMemo(() => {
     if (filterMode === 'correct') return indexedItems.filter((e) => e.isCorrect);
@@ -232,6 +234,12 @@ export const ExamResultReview: React.FC<ExamResultReviewProps> = ({
                 Menampilkan soal, pilihan jawaban Anda, kunci jawaban benar, dan kaidahnya.
               </p>
             )}
+            {markedTotal > 0 && (
+              <p className="inline-flex items-center gap-1.5 mt-2 text-xs font-semibold text-rose-700">
+                <Flag className="w-3.5 h-3.5" />
+                Peserta menandai {markedTotal} soal sebagai bermasalah.
+              </p>
+            )}
           </div>
 
           {indexedItems.length > 0 && (
@@ -319,6 +327,11 @@ export const ExamResultReview: React.FC<ExamResultReviewProps> = ({
                           {item.sectionTitle}
                         </span>
                       )}
+                      {item.markedAsProblem && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                          <Flag className="w-3 h-3" /> Bermasalah
+                        </span>
+                      )}
                       <span
                         className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
                           isCorrect
@@ -396,11 +409,6 @@ export const ExamResultReview: React.FC<ExamResultReviewProps> = ({
                                 >
                                   {opt.textAr}
                                 </div>
-                                {opt.textSub && (
-                                  <div className="text-[11px] text-slate-500 mt-0.5">
-                                    {opt.textSub}
-                                  </div>
-                                )}
                               </div>
                             </div>
 

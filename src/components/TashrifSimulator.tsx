@@ -16,7 +16,7 @@ export const TashrifSimulator: React.FC = () => {
     activeBabs[0]?.mauzunList[0]?.id ?? ''
   );
   const [activeTab, setActiveTab] = useState<'istilahi' | 'lughawi'>('istilahi');
-  const [highlightedDhamirIdx, setHighlightedDhamirIdx] = useState<number>(0);
+  const [highlightedDhamirIdx, setHighlightedDhamirIdx] = useState<number>(1);
 
   const activeBab =
     activeBabs.find((b) => b.id === selectedBabId) || activeBabs[0];
@@ -313,12 +313,10 @@ export const TashrifSimulator: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-sm">
-                  {DHAMIR_14.map((d, idx) => {
+                  {DHAMIR_14.filter((d) => d.id === 'huma_m' || d.id === 'huma_f').map((d) => {
+                    const idx = DHAMIR_14.indexOf(d);
                     const madhiWord = activeVerb.lughawiMadhi[idx];
                     const mudhariWord = activeVerb.lughawiMudhari[idx];
-                    // Amr only applies to indices 6..11 (Anta .. Antunna)
-                    const amrWord =
-                      idx >= 6 && idx <= 11 ? activeVerb.lughawiAmr[idx - 6] : '—';
                     const isActive = highlightedDhamirIdx === idx;
 
                     return (
@@ -341,8 +339,13 @@ export const TashrifSimulator: React.FC = () => {
                               {d.dhamirAr}
                             </span>
                             <div>
-                              <div className="text-xs font-semibold text-slate-800">
-                                {d.dhamirLatin}
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-semibold text-slate-800">
+                                  {d.dhamirLatin}
+                                </span>
+                                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                                  {d.id === 'huma_m' ? 'Mudzakkar' : 'Muannats'}
+                                </span>
                               </div>
                               <div className="text-[11px] text-slate-500">
                                 {d.artiId}
@@ -362,12 +365,7 @@ export const TashrifSimulator: React.FC = () => {
                         >
                           {mudhariWord}
                         </td>
-                        <td
-                          dir="rtl"
-                          className="py-3 px-4 text-right font-arabic text-2xl font-bold text-slate-700"
-                        >
-                          {amrWord}
-                        </td>
+                        <td className="py-3 px-4 text-right text-slate-400">—</td>
                       </tr>
                     );
                   })}
@@ -379,7 +377,7 @@ export const TashrifSimulator: React.FC = () => {
           {/* Right Inspection Card for Selected Dhamir */}
           <aside className="lg:col-span-4 bg-white border border-slate-200 rounded-xl p-6 sticky top-20">
             <div className="text-xs text-slate-500 mb-1">
-              Rincian Dhamir Terpilih (Baris {highlightedDhamirIdx + 1} dari 14)
+              Rincian Dhamir Terpilih
             </div>
             <div className="flex items-baseline justify-between gap-4 pb-4 mb-4 border-b border-slate-200">
               <div>
@@ -387,7 +385,10 @@ export const TashrifSimulator: React.FC = () => {
                   {DHAMIR_14[highlightedDhamirIdx].dhamirLatin}
                 </h4>
                 <p className="text-xs text-slate-600 mt-0.5">
-                  {DHAMIR_14[highlightedDhamirIdx].kategori} ·{' '}
+                  {(DHAMIR_14[highlightedDhamirIdx].id === 'huma_m' ||
+                    DHAMIR_14[highlightedDhamirIdx].id === 'huma_f') && (
+                    <>{DHAMIR_14[highlightedDhamirIdx].kategori} ·{' '}</>
+                  )}
                   {DHAMIR_14[highlightedDhamirIdx].artiId}
                 </p>
               </div>

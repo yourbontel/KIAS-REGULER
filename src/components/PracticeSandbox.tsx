@@ -9,6 +9,7 @@ import {
   Award,
 } from 'lucide-react';
 import { Student, StudentClass, StudentGender, QuizAttempt } from '../data/students';
+import type { QuestionIssue } from '../data/students';
 import { SHOROF_BABS, SHIGHAT_LIST, MauzunVerb } from '../data/shorofData';
 import { generateQuizQuestions, speakArabic, QuizQuestion } from '../utils/quizGenerator';
 
@@ -23,6 +24,10 @@ interface PracticeSandboxProps {
   onSaveAttempt: (attempt: Omit<QuizAttempt, 'id' | 'timestamp'>) => void;
   recentAttempts: QuizAttempt[];
   lockedStudent?: Student;
+  isQuestionChecker?: boolean;
+  questionIssues?: Record<string, QuestionIssue>;
+  onSaveQuestionIssue?: (issue: QuestionIssue) => void;
+  onDeleteQuestionIssue?: (questionId: string) => void;
 }
 
 const SEQUENCE_KEYS: (keyof MauzunVerb['istilahi'])[] = [
@@ -47,6 +52,10 @@ export const PracticeSandbox: React.FC<PracticeSandboxProps> = ({
   onSaveAttempt,
   recentAttempts,
   lockedStudent,
+  isQuestionChecker = false,
+  questionIssues = {},
+  onSaveQuestionIssue,
+  onDeleteQuestionIssue,
 }) => {
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedBabId, setSelectedBabId] = useState<string>('all');
@@ -186,7 +195,7 @@ export const PracticeSandbox: React.FC<PracticeSandboxProps> = ({
         selectedBabId === 'all'
           ? 'Semua Bab Tashrif'
           : SHOROF_BABS.find((b) => b.id === selectedBabId)?.kode || 'Bab Shorof';
-      if (activeStudent) {
+      if (activeStudent && !isQuestionChecker) {
         onSaveAttempt({
           studentId: activeStudent.id,
           babId: selectedBabId,
@@ -242,6 +251,24 @@ export const PracticeSandbox: React.FC<PracticeSandboxProps> = ({
   };
 
   const currentQuestion = questions[currentIdx];
+  const currentIssue = currentQuestion ? questionIssues[currentQuestion.id] : undefined;
+  const handleToggleIssue = () => {
+    if (!currentQuestion || !onSaveQuestionIssue || !onDeleteQuestionIssue) return;
+    if (currentIssue) {
+      onDeleteQuestionIssue(currentQuestion.id);
+      return;
+    }
+    const note = window.prompt('Catatan masalah soal (opsional):', '')?.trim() || undefined;
+    onSaveQuestionIssue({
+      questionId: currentQuestion.id,
+      babId: currentQuestion.babId,
+      babKode: currentQuestion.babKode,
+      promptId: currentQuestion.promptId,
+      ...(note ? { note } : {}),
+      markedAt: new Date().toISOString(),
+      markedBy: 'Superadmin',
+    });
+  };
   const studentAttempts = useMemo(
     () => recentAttempts.filter((a) => a.studentId === activeStudent?.id),
     [recentAttempts, activeStudent]
@@ -476,12 +503,17 @@ export const PracticeSandbox: React.FC<PracticeSandboxProps> = ({
           /* Active Multiple-Choice Question Stage */
           <div>
             {/* Progress & Bab Context */}
-            <div className="flex items-center justify-between gap-4 text-xs text-slate-500 mb-4">
-              <span>{currentQuestion.babKode}</span>
-              <span className="tabular-nums font-medium text-slate-700">
-                Soal {currentIdx + 1} / {questions.length} · Skor Sementara: {correctCount} Benar
-              </span>
-            </div>
+             <div className="flex items-center justify-between gap-4 text-xs text-slate-500 mb-4">
+               <span>{currentQuestion.babKode}</span>
+               <div className="flex items-center gap-3">
+                 {isQuestionChecker && (
+                   <button type="button" onClick={handleToggleIssue} className={`px-2.5 py-1.5 rounded-md border font-semibold ${currentIssue ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-slate-200 bg-white text-slate-600 hover:border-amber-300'}`}>
+                     {currentIssue ? 'Soal Ditandai' : 'Tandai Bermasalah'}
+                   </button>
+                 )}
+                 <span className="tabular-nums font-medium text-slate-700">Soal {currentIdx + 1} / {questions.length} · Skor Sementara: {correctCount} Benar</span>
+               </div>
+             </div>
 
             {/* Question Prompt Card */}
             <div className="bg-[#F8FAFC] border border-slate-200 rounded-xl p-6 mb-6">
@@ -526,7 +558,7 @@ export const PracticeSandbox: React.FC<PracticeSandboxProps> = ({
                   <button
                     key={option.id}
                     type="button"
-                    disabled={showResult}
+                     disabled={showResult}
                     onClick={() => handleSelectOption(option.id)}
                     className={`group flex items-center justify-between gap-4 p-4 rounded-xl border text-left transition-colors ${buttonStyle}`}
                   >
@@ -543,12 +575,9 @@ export const PracticeSandbox: React.FC<PracticeSandboxProps> = ({
                           }
                         >
                           {option.textAr}
-                        </div>
-                        {option.textSub && (
-                          <div className="text-xs text-slate-500 mt-0.5 truncate">
-                            {option.textSub}
-                          </div>
-                        )}
+             </div>
+
+             {currentIssue && <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">Ditandai bermasalah{currentIssue.note ? `: ${currentIssue.note}` : '.'}</div>}
                       </div>
                     </div>
 

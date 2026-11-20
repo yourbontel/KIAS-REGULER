@@ -4,6 +4,7 @@ import type {
   QuizAttemptReviewItem,
   SetoranRecord,
   Student,
+  QuestionIssue,
 } from '../data/students';
 import type { ExamAccessConfig } from './examAccess';
 
@@ -13,6 +14,7 @@ export interface StudentDataSnapshot {
   studentRecords: Student[];
   examAccess?: ExamAccessConfig;
   manualScoresMap?: Record<string, ManualScoreRecord>;
+  questionIssues?: Record<string, QuestionIssue>;
 }
 
 export async function loadStudentData(): Promise<StudentDataSnapshot> {
@@ -21,6 +23,15 @@ export async function loadStudentData(): Promise<StudentDataSnapshot> {
     throw new Error('Gagal memuat data nilai siswa dari server.');
   }
   return response.json();
+}
+
+export async function registerUnlistedStudent(
+  student: Omit<Student, 'id'>
+): Promise<{ student: Student | null; error: string | null }> {
+  const { data, error } = await postStudentData<{ ok: boolean; student: Student }>(
+    { action: 'register-unlisted-student', student },
+  );
+  return { student: data?.student ?? null, error };
 }
 
 export async function loadAttemptReviewFromDb(
@@ -48,6 +59,7 @@ async function postStudentData<T = { ok: boolean }>(
   try {
     const response = await fetch('/api/student-data', {
       method: 'POST',
+      signal: AbortSignal.timeout(15000),
       headers: {
         'Content-Type': 'application/json',
         ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
@@ -62,7 +74,10 @@ async function postStudentData<T = { ok: boolean }>(
       data: null,
       error: result?.error || 'Gagal menyimpan data ke database.',
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'TimeoutError') {
+      return { data: null, error: 'Server terlalu lama merespons. Periksa koneksi database lalu coba lagi.' };
+    }
     return {
       data: null,
       error: 'Tidak dapat terhubung ke server. Periksa koneksi internet lalu coba lagi.',
@@ -174,4 +189,12 @@ export async function saveManualScoresInDb(
     saved: Record<string, ManualScoreRecord | null>;
   }>({ action: 'save-manual-scores', entries }, adminToken);
   return { saved: data?.saved ?? null, error };
+}
+
+export async function saveQuestionIssueInDb(issue: QuestionIssue, adminToken: string | null) {
+  return postStudentData<{ ok: boolean; issue: QuestionIssue }>({ action: 'upsert-question-issue', issue }, adminToken);
+}
+
+export async function deleteQuestionIssueInDb(questionId: string, adminToken: string | null) {
+  return postStudentData({ action: 'delete-question-issue', questionId }, adminToken);
 }

@@ -20,6 +20,7 @@ export interface ExamDraft {
   sectionNumber: number | null;
   questions: QuizQuestion[];
   answers: Record<number, string>;
+  markedQuestions?: number[];
   currentIdx: number;
   startedAt: string;
 }

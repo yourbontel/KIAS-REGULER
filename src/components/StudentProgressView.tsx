@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Clock,
   Eye,
+  Flag,
   Lock,
   Play,
   RotateCcw,
@@ -382,6 +383,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
                   <th className="py-3 px-5">Jenis</th>
                   <th className="py-3 px-5 text-right">Benar</th>
                   <th className="py-3 px-5 text-right">Nilai</th>
+                  <th className="py-3 px-5 text-right">Tanda</th>
                   <th className="py-3 px-5 text-right">Jawaban</th>
                 </tr>
               </thead>
@@ -410,6 +412,19 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
                       >
                         {att.score}
                       </span>
+                    </td>
+                    <td className="py-3 px-5 text-right">
+                      {(() => {
+                        const markedCount = att.markedQuestionCount ?? att.reviewItems?.filter((item) => item.markedAsProblem).length ?? 0;
+                        return markedCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-1 rounded-full">
+                            <Flag className="w-3 h-3" />
+                            {markedCount}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        );
+                      })()}
                     </td>
                     <td className="py-3 px-5 text-right">
                       <button

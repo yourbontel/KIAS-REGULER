@@ -30,8 +30,6 @@ import { SuccessToast } from './SuccessToast';
 interface StudentRosterViewProps {
   students: Student[];
   attempts: QuizAttempt[];
-  setoranMap: Record<string, SetoranRecord>;
-  onToggleSetoranBab: (studentId: string, babCode: string) => void;
   onAddStudent: (newStudent: Omit<Student, 'id'>) => void;
   onUpdateStudentGroup: (
     studentId: string,
@@ -43,13 +41,9 @@ interface StudentRosterViewProps {
   onResetStudentAttempts?: (params: ResetAttemptsParams) => Promise<string | null>;
 }
 
-const CORE_BABS = ['Bab 1', 'Bab 2', 'Bab 3', 'Bab 4', 'Bab 5', 'Bab 6'];
-
 export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
   students,
   attempts,
-  setoranMap,
-  onToggleSetoranBab,
   onAddStudent,
   onUpdateStudentGroup,
   studentPasswords = {},
@@ -179,11 +173,9 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
             stAttempts.reduce((sum, a) => sum + a.score, 0) / stAttempts.length
           )
         : null;
-    const completedBabs = setoranMap[studentId]?.completedBabs || [];
     return {
       attemptCount: stAttempts.length,
       avgScore,
-      completedBabs,
     };
   };
 
@@ -195,7 +187,6 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
       'Kota',
       'Jumlah Latihan',
       'Rata-rata Skor',
-      'Setoran Bab Lulus',
     ];
     const rows = students.map((s) => {
       const stats = getStudentStats(s.id);
@@ -206,7 +197,6 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
         `"${s.kota}"`,
         stats.attemptCount,
         stats.avgScore !== null ? `${stats.avgScore}` : '-',
-        `"${stats.completedBabs.join(', ')}"`,
       ].join(',');
     });
     const csvContent = [headers.join(','), ...rows].join('\n');
@@ -258,7 +248,7 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
               <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500">
                 <th className="py-3 px-4 w-10 tabular-nums">No</th>
                 <th className="py-3 px-4">Nama Siswa</th>
-                <th className="py-3 px-4">Setoran Hafalan (Bab 1–6)</th>
+                <th className="py-3 px-4"></th>
                 <th className="py-3 px-4 text-right">Nilai Kuis</th>
                 <th className="py-3 px-4 text-right">Aksi</th>
               </tr>
@@ -299,28 +289,6 @@ export const StudentRosterView: React.FC<StudentRosterViewProps> = ({
                           )}
                         </div>
                       )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex flex-wrap items-center gap-1">
-                        {CORE_BABS.map((babLabel, bIdx) => {
-                          const isDone = stats.completedBabs.includes(babLabel);
-                          return (
-                            <button
-                              key={babLabel}
-                              type="button"
-                              onClick={() => onToggleSetoranBab(st.id, babLabel)}
-                              title={`Klik untuk menandai setoran ${babLabel} (${st.name})`}
-                              className={`w-7 h-7 rounded-md text-[11px] font-semibold tabular-nums border flex items-center justify-center transition-colors ${
-                                isDone
-                                  ? 'bg-emerald-700 text-white border-emerald-700'
-                                  : 'bg-[#F8FAFC] text-slate-600 border-slate-200 hover:border-slate-400'
-                              }`}
-                            >
-                              {isDone ? <Check className="w-3.5 h-3.5" /> : bIdx + 1}
-                            </button>
-                          );
-                        })}
-                      </div>
                     </td>
                     <td className="py-3 px-4 text-right tabular-nums">
                       {stats.avgScore !== null ? (

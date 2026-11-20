@@ -30,6 +30,7 @@ export interface QuizAttemptReviewItem {
   selectedOptionId: string;
   correctOptionId: string;
   explanation: string;
+  markedAsProblem?: boolean;
 }
 
 export interface QuizAttempt {
@@ -45,6 +46,7 @@ export interface QuizAttempt {
   correctCount: number;
   totalQuestions: number;
   hasReview?: boolean;
+  markedQuestionCount?: number;
   reviewItems?: QuizAttemptReviewItem[];
 }
 
@@ -60,6 +62,16 @@ export interface ManualScoreRecord {
   utsScore: number | null;
   uasScore: number | null;
   updatedAt?: string;
+}
+
+export interface QuestionIssue {
+  questionId: string;
+  babId: string;
+  babKode: string;
+  promptId: string;
+  note?: string;
+  markedAt: string;
+  markedBy: string;
 }
 
 export const DEMO_STUDENTS: Student[] = [

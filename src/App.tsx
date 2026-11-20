@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { LogOut, KeyRound, ShieldCheck, GraduationCap } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { LogOut, KeyRound, ShieldCheck, GraduationCap, X } from 'lucide-react';
 import {
   DEMO_STUDENTS,
   INITIAL_STUDENTS,
@@ -45,6 +45,7 @@ import {
   resetStudentAttemptsInDb,
   saveManualScoresInDb,
   saveQuizAttemptToDb,
+  registerUnlistedStudent,
   toggleSetoranInDb,
   updateExamAccessInDb,
   upsertStudentInDb,
@@ -96,8 +97,10 @@ export default function App() {
   const [dbSyncError, setDbSyncError] = useState<string | null>(null);
   const [examAccess, setExamAccess] = useState<ExamAccessConfig>(DEFAULT_EXAM_ACCESS);
   const [examAccessSaving, setExamAccessSaving] = useState(false);
+  const seedStudentsSynced = useRef(false);
   const [legacyImported, setLegacyImported] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [requestedBabId, setRequestedBabId] = useState<string | null>(null);
 
   // Persistent Student Roster (88 initial students + Demo Siswa; NIS removed)
@@ -307,6 +310,31 @@ export default function App() {
     session?.role === 'student'
       ? students.find((s) => s.id === session.studentId)
       : undefined;
+
+  useEffect(() => {
+    if (!isSuperadmin || activeSection !== 'access') return;
+    if (seedStudentsSynced.current) return;
+    seedStudentsSynced.current = true;
+    let cancelled = false;
+    void fetch('/api/student-data', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
+      },
+      body: JSON.stringify({ action: 'sync-seed-students' }),
+      signal: AbortSignal.timeout(15000),
+    }).then(async (response) => {
+      if (response.ok || cancelled) return;
+      seedStudentsSynced.current = false;
+      const result = await response.json().catch(() => null);
+      setDbSyncError(result?.error || 'Gagal menyinkronkan data siswa.');
+    }).catch((error) => {
+      seedStudentsSynced.current = false;
+      if (!cancelled) setDbSyncError(error instanceof Error ? error.message : 'Gagal menyinkronkan data siswa.');
+    });
+    return () => { cancelled = true; };
+  }, [isSuperadmin, activeSection, students, adminToken]);
 
   // Keep cohort & selected student locked to logged-in student
   useEffect(() => {
@@ -612,18 +640,24 @@ export default function App() {
     const previous = examAccess;
     setExamAccess(nextConfig);
     setExamAccessSaving(true);
-    const { examAccess: saved, error } = await updateExamAccessInDb(nextConfig, adminToken);
-    setExamAccessSaving(false);
-    if (error) {
+    try {
+      const { examAccess: saved, error } = await updateExamAccessInDb(nextConfig, adminToken);
+      if (error) {
+        setExamAccess(previous);
+        setDbSyncError(error);
+        window.alert(error);
+        return;
+      }
+      if (saved) setExamAccess(saved);
+      setDbSyncError(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gagal menyimpan pengaturan akses.';
       setExamAccess(previous);
-      setDbSyncError(error);
-      window.alert(error);
-      return;
+      setDbSyncError(message);
+      window.alert(message);
+    } finally {
+      setExamAccessSaving(false);
     }
-    if (saved) {
-      setExamAccess(saved);
-    }
-    setDbSyncError(null);
   };
 
   const handleSaveManualScores = async (
@@ -694,12 +728,19 @@ export default function App() {
         onLoginSuperadmin={handleLoginSuperadmin}
         onLoginStudent={handleLoginStudent}
         onRegisterStudentPassword={handleRegisterStudentPassword}
+        onRegisterUnlistedStudent={async (student) => {
+          const result = await registerUnlistedStudent(student);
+          if (result.student) {
+            setStudents((previous) => [...previous, result.student!]);
+          }
+          return result;
+        }}
       />
     );
   }
 
   const navItems: { id: ActiveSection; label: string; mobileLabel: string }[] = isSuperadmin
-    ? [
+      ? [
         { id: 'recap', label: 'Rekap Nilai Per Bab', mobileLabel: 'Rekap Nilai' },
         { id: 'uts_uas', label: 'UTS & UAS Sem. 1', mobileLabel: 'UTS/UAS Sem.1' },
         { id: 'access', label: 'Akses Buka Soal', mobileLabel: 'Akses Soal' },
@@ -712,8 +753,7 @@ export default function App() {
         { id: 'ranking', label: 'Peringkat Kelas', mobileLabel: 'Peringkat' },
       ];
 
-  const currentSection: ActiveSection =
-    isSuperadmin && activeSection === 'practice' ? 'recap' : activeSection;
+  const currentSection: ActiveSection = activeSection;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900">
@@ -775,7 +815,7 @@ export default function App() {
 
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={() => setShowLogoutConfirm(true)}
               title="Keluar dari akun"
               className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors whitespace-nowrap shrink-0"
             >
@@ -963,8 +1003,6 @@ export default function App() {
           <StudentRosterView
             students={students}
             attempts={attempts}
-            setoranMap={setoranMap}
-            onToggleSetoranBab={handleToggleSetoranBab}
             onAddStudent={handleAddStudent}
             onUpdateStudentGroup={handleUpdateStudentGroup}
             studentPasswords={studentPasswords}
@@ -1122,6 +1160,54 @@ export default function App() {
         }
         onChangePassword={handleChangeOwnPassword}
       />
+
+      {showLogoutConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[1px]"
+          onClick={() => setShowLogoutConfirm(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-confirm-title"
+            className="w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 bg-rose-50/70 px-5 py-4">
+              <h2 id="logout-confirm-title" className="text-sm font-bold text-slate-900">
+                Keluar dari akun?
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                aria-label="Tutup konfirmasi keluar"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-4 p-5">
+              <p className="text-sm text-slate-600">Apakah Anda yakin ingin keluar dari akun ini?</p>
+              <div className="flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  Tidak, Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex-1 rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-rose-700"
+                >
+                  Ya, Keluar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

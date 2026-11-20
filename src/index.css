@@ -8,6 +8,16 @@
     --font-arabic: 'Amiri', 'Traditional Arabic', serif;
   }
 
+  select option {
+    color: #334155;
+    background-color: #ffffff;
+  }
+
+  select option:checked {
+    color: #065f46;
+    background-color: #d1fae5;
+  }
+
   body {
     font-family: var(--font-sans);
     background-color: #F8FAFC;

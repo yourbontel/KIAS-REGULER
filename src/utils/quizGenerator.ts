@@ -509,9 +509,9 @@ function buildLughawiTransformQuestions(
         sectionTitle: getSectionTitle(sectionNumber),
         promptId: `Ubah ${tenseLabel} lughawi dari "${verb.istilahi[tense]}" (${verb.artiDasar}) untuk dhamir ${dhamir.dhamirLatin} (${dhamir.artiId}):`,
         arabicHighlight: `${verb.istilahi[tense]}  ←  ${dhamir.dhamirAr}`,
-        arabicSubtext: `Target: ${dhamir.kategori} · ${bab.kode}`,
+        arabicSubtext: `Target: ${['huma_m', 'huma_f'].includes(dhamir.id) ? `${dhamir.kategori} · ` : ''}${bab.kode}`,
         options: shuffleArray([
-          { id: 'correct', textAr: answer, textSub: dhamir.dhamirAr },
+          { id: 'correct', textAr: answer, textSub: dhamir.id === 'ana' ? undefined : dhamir.dhamirAr },
           ...distractors.map((val, idx) => ({
             id: `wrong-${idx}`,
             textAr: val,
@@ -548,12 +548,13 @@ function buildLughawiReverseQuestions(
         // Lewati bentuk yang sama dipakai lebih dari satu dhamir (ambigu)
         if (forms.filter((v) => v === form).length > 1) return;
 
-        // Pilih distraktor dengan dhamirAr unik agar opsi tidak duplikat
-        const seen = new Set<string>([dhamir.dhamirAr]);
+        // Huma mudzakkar dan muannats sama-sama ditulis هُمَا, jadi keduanya
+        // harus tetap dapat muncul sebagai pilihan yang dibedakan kategorinya.
+        const seen = new Set<string>([dhamir.id]);
         const distractors = shuffleArray(DHAMIR_14)
           .filter((d) => {
-            if (d.id === dhamir.id || seen.has(d.dhamirAr)) return false;
-            seen.add(d.dhamirAr);
+            if (d.id === dhamir.id || seen.has(d.id)) return false;
+            seen.add(d.id);
             return true;
           })
           .slice(0, 3);
@@ -569,11 +570,11 @@ function buildLughawiReverseQuestions(
           arabicHighlight: form,
           arabicSubtext: `Pola lughawi ${tenseLabel} · ${bab.kode}`,
           options: shuffleArray([
-            { id: 'correct', textAr: dhamir.dhamirAr, textSub: dhamir.kategori },
-            ...distractors.map((d, idx) => ({
-              id: `wrong-${idx}`,
-              textAr: d.dhamirAr,
-              textSub: d.kategori,
+             { id: 'correct', textAr: dhamir.dhamirAr, textSub: ['huma_m', 'huma_f'].includes(dhamir.id) ? dhamir.kategori : undefined },
+             ...distractors.map((d, idx) => ({
+               id: `wrong-${idx}`,
+               textAr: d.dhamirAr,
+               textSub: ['huma_m', 'huma_f'].includes(d.id) ? d.kategori : undefined,
             })),
           ]),
           correctOptionId: 'correct',
@@ -674,7 +675,7 @@ function buildLughawiAmrQuestions(
         sectionTitle: getSectionTitle(sectionNumber),
         promptId: `Ubah Fi'il Amr dari "${verb.istilahi.fiil_amr}" (${verb.artiDasar}) untuk dhamir ${dhamir.dhamirLatin} (${dhamir.artiId}):`,
         arabicHighlight: `${verb.istilahi.fiil_amr}  ←  ${dhamir.dhamirAr}`,
-        arabicSubtext: `Target: ${dhamir.kategori} · ${bab.kode}`,
+        arabicSubtext: `Target: ${['huma_m', 'huma_f'].includes(dhamir.id) ? `${dhamir.kategori} · ` : ''}${bab.kode}`,
         options: shuffleArray([
           { id: 'correct', textAr: answer, textSub: dhamir.dhamirAr },
           ...distractors.map((val, idx) => ({
