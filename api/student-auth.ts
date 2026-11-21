@@ -2,8 +2,13 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Pool } from 'pg';
 import { createHmac, scryptSync, timingSafeEqual } from 'node:crypto';
 
+const databaseUrl =
+  process.env.DATABASE_URL_POOLED ||
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL;
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL_POOLED || process.env.DATABASE_URL,
+  connectionString: databaseUrl,
   ssl: { rejectUnauthorized: false },
   max: 1,
 });
@@ -45,6 +50,12 @@ const ensureTable = async () => {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
+  if (!databaseUrl) {
+    console.error('Database connection is not configured. Set DATABASE_URL_POOLED or DATABASE_URL in Vercel.');
+    return res.status(503).json({
+      error: 'Database belum dikonfigurasi di deployment. Tambahkan DATABASE_URL_POOLED atau DATABASE_URL di Vercel Project Settings.',
+    });
+  }
   if (req.method === 'POST' && (req.query?.action === 'admin-login' || req.body?.action === 'admin-login')) {
     try {
       await ensureTable();

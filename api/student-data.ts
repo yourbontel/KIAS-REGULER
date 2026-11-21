@@ -4,8 +4,13 @@ import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { SHOROF_BABS_REGULER_1 } from '../src/data/babs/reguler1';
 import { INITIAL_STUDENTS } from '../src/data/students';
 
+const databaseUrl =
+  process.env.DATABASE_URL_POOLED ||
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL;
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL_POOLED || process.env.DATABASE_URL,
+  connectionString: databaseUrl,
   ssl: { rejectUnauthorized: false },
   max: 1,
 });
@@ -306,6 +311,13 @@ function sanitizeReviewItems(raw: unknown) {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
+
+  if (!databaseUrl) {
+    console.error('Database connection is not configured. Set DATABASE_URL_POOLED or DATABASE_URL in Vercel.');
+    return res.status(503).json({
+      error: 'Database belum dikonfigurasi di deployment. Tambahkan DATABASE_URL_POOLED atau DATABASE_URL di Vercel Project Settings.',
+    });
+  }
 
   if (req.method === 'GET') {
     try {

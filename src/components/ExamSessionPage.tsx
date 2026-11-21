@@ -396,9 +396,10 @@ export const ExamSessionPage: React.FC = () => {
     const dbErr = await saveQuizAttemptToDb(entry);
     if (dbErr) {
       setSaveError(dbErr);
+    } else {
+      clearExamDraft(activeStudent.id, targetBab.id, activeSectionNumber);
     }
 
-    clearExamDraft(activeStudent.id, targetBab.id, activeSectionNumber);
     setSubmittedResult({
       score,
       correctCount,
