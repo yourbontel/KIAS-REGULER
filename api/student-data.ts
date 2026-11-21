@@ -61,11 +61,18 @@ function ensureTables(): Promise<void> {
         CREATE INDEX IF NOT EXISTS idx_quiz_attempts_created_at
         ON quiz_attempts (created_at DESC)
       `);
-      await pool.query(`
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_quiz_attempts_unique_section
-        ON quiz_attempts (student_id, bab_id, section_number)
-        WHERE section_number IS NOT NULL
-      `);
+      try {
+        await pool.query(`
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_quiz_attempts_unique_section
+          ON quiz_attempts (student_id, bab_id, section_number)
+          WHERE section_number IS NOT NULL
+        `);
+      } catch (error) {
+        // Existing databases may contain duplicate historical attempts. Keep reads available
+        // and let the save route report a conflict until the duplicate rows are cleaned up.
+        if ((error as { code?: string })?.code !== '23505') throw error;
+        console.error('Skipped unique quiz-attempt index because duplicate historical rows exist.');
+      }
       await pool.query(`
         CREATE TABLE IF NOT EXISTS student_setoran (
           student_id TEXT PRIMARY KEY,
