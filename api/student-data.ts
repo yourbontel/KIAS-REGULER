@@ -11,17 +11,21 @@ const databaseUrl =
   process.env.POSTGRES_PRISMA_URL ||
   process.env.POSTGRES_URL_NON_POOLING;
 
-const pool = new Pool({
-  connectionString: databaseUrl,
-  ssl: { rejectUnauthorized: false },
-  max: 1,
-  connectionTimeoutMillis: 10000,
-  idleTimeoutMillis: 10000,
-});
+let pool: Pool;
 
-pool.on('error', (err) => {
-  console.error('PostgreSQL idle client error (student-data):', err.message);
-});
+function initializePool() {
+  if (pool) return;
+  pool = new Pool({
+    connectionString: databaseUrl,
+    ssl: { rejectUnauthorized: false },
+    max: 1,
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 10000,
+  });
+  pool.on('error', (err) => {
+    console.error('PostgreSQL idle client error (student-data):', err.message);
+  });
+}
 
 const VALID_MODES = new Set([
   'ujian_bab',
@@ -327,6 +331,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('Database connection is not configured. Set DATABASE_URL_POOLED or DATABASE_URL in Vercel.');
     return res.status(503).json({
       error: 'Database belum dikonfigurasi di deployment. Tambahkan DATABASE_URL_POOLED atau DATABASE_URL di Vercel Project Settings.',
+    });
+  }
+
+  try {
+    initializePool();
+  } catch (error) {
+    console.error('Failed to initialize PostgreSQL pool', {
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return res.status(503).json({
+      error: 'Konfigurasi koneksi PostgreSQL di Vercel tidak valid. Periksa DATABASE_URL_POOLED atau DATABASE_URL.',
     });
   }
 
