@@ -15,6 +15,8 @@ const pool = new Pool({
   connectionString: databaseUrl,
   ssl: { rejectUnauthorized: false },
   max: 1,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 10000,
 });
 
 pool.on('error', (err) => {
@@ -474,6 +476,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       return res.status(503).json({
         error: 'Database tidak dapat diakses. Periksa environment variable koneksi PostgreSQL di Vercel dan lihat Function Logs untuk detailnya.',
+        code: (error as { code?: string })?.code || undefined,
       });
     }
   }
