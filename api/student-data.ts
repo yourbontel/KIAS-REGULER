@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Pool } from 'pg';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { SHOROF_BABS_REGULER_1 } from '../src/data/babs/reguler1';
+import { INITIAL_STUDENTS } from '../src/data/students';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL_POOLED || process.env.DATABASE_URL,
@@ -552,7 +553,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
       const currentAccess = sanitizeExamAccess(accessRow.rows[0]?.config);
       const studentRow = await pool.query('SELECT kelas FROM student_records WHERE id = $1 LIMIT 1', [studentId]);
-      const studentClass = studentRow.rows[0]?.kelas || null;
+      // The built-in roster is valid even when it has not been copied into student_records.
+      const studentClass = studentRow.rows[0]?.kelas || INITIAL_STUDENTS.find((student) => student.id === studentId)?.kelas || null;
       if (cleanSection !== null && !studentClass) {
         return res.status(403).json({ error: 'Kelas siswa tidak dapat diverifikasi. Hubungi Superadmin.' });
       }
