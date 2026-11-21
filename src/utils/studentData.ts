@@ -20,10 +20,23 @@ export interface StudentDataSnapshot {
 export async function loadStudentData(): Promise<StudentDataSnapshot> {
   const response = await fetch('/api/student-data', { cache: 'no-store' });
   if (!response.ok) {
-    const result = await response.json().catch(() => null);
+    const rawBody = await response.text().catch(() => '');
+    let result: { error?: string; code?: string } | null = null;
+    try {
+      result = rawBody ? JSON.parse(rawBody) : null;
+    } catch {
+      // Vercel can return an HTML/plain-text platform error before the handler runs.
+    }
+    const platformMessage = rawBody
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 240);
     throw new Error(
       result?.error ||
-        `Gagal memuat data nilai siswa dari server (HTTP ${response.status}).`
+        (platformMessage
+          ? `Server mengembalikan HTTP ${response.status}: ${platformMessage}`
+          : `Gagal memuat data nilai siswa dari server (HTTP ${response.status}).`)
     );
   }
   return response.json();
