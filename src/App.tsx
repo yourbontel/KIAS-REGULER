@@ -257,6 +257,11 @@ export default function App() {
         setDbSyncError(null);
       } else {
         console.error(dataResult.reason);
+        setDbSyncError(
+          dataResult.reason instanceof Error
+            ? dataResult.reason.message
+            : 'Gagal memuat data siswa dan riwayat ujian dari database.'
+        );
       }
     };
     void refresh();
@@ -722,20 +727,27 @@ export default function App() {
   // Require login if no active session (or if student record is missing)
   if (!session || (session.role === 'student' && !loggedInStudent)) {
     return (
-      <LoginView
-        students={students}
-        studentPasswords={studentPasswords}
-        onLoginSuperadmin={handleLoginSuperadmin}
-        onLoginStudent={handleLoginStudent}
-        onRegisterStudentPassword={handleRegisterStudentPassword}
-        onRegisterUnlistedStudent={async (student) => {
-          const result = await registerUnlistedStudent(student);
-          if (result.student) {
-            setStudents((previous) => [...previous, result.student!]);
-          }
-          return result;
-        }}
-      />
+      <>
+        {dbSyncError && (
+          <div className="fixed inset-x-0 top-0 z-50 border-b border-amber-300 bg-amber-50 px-4 py-3 text-center text-xs text-amber-900">
+            Sinkronisasi database terganggu: {dbSyncError}
+          </div>
+        )}
+        <LoginView
+          students={students}
+          studentPasswords={studentPasswords}
+          onLoginSuperadmin={handleLoginSuperadmin}
+          onLoginStudent={handleLoginStudent}
+          onRegisterStudentPassword={handleRegisterStudentPassword}
+          onRegisterUnlistedStudent={async (student) => {
+            const result = await registerUnlistedStudent(student);
+            if (result.student) {
+              setStudents((previous) => [...previous, result.student!]);
+            }
+            return result;
+          }}
+        />
+      </>
     );
   }
 
