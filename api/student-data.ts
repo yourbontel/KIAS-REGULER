@@ -456,7 +456,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .json({ attempts, setoranMap, studentRecords, examAccess, manualScoresMap, questionIssues });
     } catch (error) {
       console.error('Failed to load student data', error);
-      return res.status(500).json({ error: 'Gagal memuat data nilai & setoran dari database.' });
+      return res.status(503).json({
+        error: 'Database tidak dapat diakses. Periksa environment variable koneksi PostgreSQL di Vercel dan lihat Function Logs untuk detailnya.',
+      });
     }
   }
 

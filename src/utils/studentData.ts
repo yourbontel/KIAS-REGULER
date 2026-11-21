@@ -20,7 +20,11 @@ export interface StudentDataSnapshot {
 export async function loadStudentData(): Promise<StudentDataSnapshot> {
   const response = await fetch('/api/student-data', { cache: 'no-store' });
   if (!response.ok) {
-    throw new Error('Gagal memuat data nilai siswa dari server.');
+    const result = await response.json().catch(() => null);
+    throw new Error(
+      result?.error ||
+        `Gagal memuat data nilai siswa dari server (HTTP ${response.status}).`
+    );
   }
   return response.json();
 }
