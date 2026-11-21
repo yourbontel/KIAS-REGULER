@@ -353,7 +353,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               mode, score, correct_count, total_questions,
               COALESCE((
                 SELECT COUNT(*)
-                FROM jsonb_array_elements(COALESCE(review_items, '[]'::jsonb)) AS review_item
+                FROM jsonb_array_elements(
+                  CASE
+                    WHEN jsonb_typeof(review_items) = 'array' THEN review_items
+                    ELSE '[]'::jsonb
+                  END
+                ) AS review_item
                 WHERE review_item->>'markedAsProblem' = 'true'
               ), 0) AS marked_question_count,
               (review_items IS NOT NULL) AS has_review
@@ -455,7 +460,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .status(200)
         .json({ attempts, setoranMap, studentRecords, examAccess, manualScoresMap, questionIssues });
     } catch (error) {
-      console.error('Failed to load student data', error);
+      console.error('Failed to load student data', {
+        message: error instanceof Error ? error.message : String(error),
+        code: (error as { code?: string })?.code,
+        detail: (error as { detail?: string })?.detail,
+      });
       return res.status(503).json({
         error: 'Database tidak dapat diakses. Periksa environment variable koneksi PostgreSQL di Vercel dan lihat Function Logs untuk detailnya.',
       });
