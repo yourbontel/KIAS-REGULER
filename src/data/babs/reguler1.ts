@@ -1,4 +1,4 @@
-import type { MauzunVerb, ShorofBab } from './types';
+import type { MauzunVerb, ShorofBab } from './types.js';
 
 function buildFaaalaVerb(
   id: string,

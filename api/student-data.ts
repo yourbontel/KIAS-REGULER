@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Pool } from 'pg';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
-import { SHOROF_BABS_REGULER_1 } from '../src/data/babs/reguler1';
-import { INITIAL_STUDENTS } from '../src/data/students';
+import { SHOROF_BABS_REGULER_1 } from '../src/data/babs/reguler1.js';
+import { INITIAL_STUDENTS } from '../src/data/students.js';
 
 const databaseUrl =
   process.env.DATABASE_URL_POOLED ||
